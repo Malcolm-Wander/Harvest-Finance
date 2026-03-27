@@ -13,6 +13,8 @@ import {
   Badge
 } from '@/components/ui';
 import { Wallet, ArrowDownLeft, CheckCircle2, AlertCircle } from 'lucide-react';
+import { useAuthStore } from '@/lib/stores/auth-store';
+import axios from 'axios';
 
 interface WithdrawModalProps {
   isOpen: boolean;
@@ -26,6 +28,7 @@ interface WithdrawModalProps {
 }
 
 export const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, vault }) => {
+  const { user, token } = useAuthStore();
   const [amount, setAmount] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -71,16 +74,25 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, v
     if (!amount || error) return;
     
     setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    setIsLoading(false);
-    setIsSuccess(true);
-    
-    // Auto close after success
-    setTimeout(() => {
-      onClose();
-    }, 2000);
+    try {
+      // Call real backend API
+      await axios.post(
+        `http://localhost:3001/api/v1/vaults/${vault.id}/withdraw`,
+        { amount: parseFloat(amount) },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      setIsLoading(false);
+      setIsSuccess(true);
+      
+      // Auto close after success
+      setTimeout(() => {
+        onClose();
+      }, 2000);
+    } catch (err: any) {
+      setIsLoading(false);
+      setError(err.response?.data?.message || 'Withdrawal failed. Please try again.');
+    }
   };
 
   return (
