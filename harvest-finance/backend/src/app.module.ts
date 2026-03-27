@@ -12,6 +12,8 @@ import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { VaultsModule } from './vaults/vaults.module';
+import { FarmIntelligenceModule } from './farm-intelligence/farm-intelligence.module';
+import { AchievementsModule } from './achievements/achievements.module';
 import { RewardsModule } from './rewards/rewards.module';
 import { AdminModule } from './admin/admin.module';
 import { NotificationsModule } from './notifications/notifications.module';
@@ -23,10 +25,12 @@ import {
   CreditScore,
   Vault,
   Deposit,
-  Reward,
   Notification,
+  Achievement,
+  Reward,
 } from './database/entities';
 import { CreateInitialSchema1700000000000 } from './database/migrations/1700000000000-CreateInitialSchema';
+import { CreateAchievements1700000000004 } from './database/migrations/1700000000004-CreateAchievements';
 import { CreateRewards1700000000005 } from './database/migrations/1700000000005-CreateRewards';
 import { CreateVaultsAndDeposits1700000000003 } from './database/migrations/1700000000003-CreateVaultsAndDeposits';
 import { CreateNotifications1700000000006 } from './database/migrations/1700000000006-CreateNotifications';
@@ -53,12 +57,14 @@ import { CreateNotifications1700000000006 } from './database/migrations/17000000
           CreditScore,
           Vault,
           Deposit,
+          Achievement,
           Reward,
           Notification,
         ],
         migrations: [
           CreateInitialSchema1700000000000,
           CreateVaultsAndDeposits1700000000003,
+          CreateAchievements1700000000004,
           CreateRewards1700000000005,
           CreateNotifications1700000000006,
         ],
@@ -94,6 +100,8 @@ import { CreateNotifications1700000000006 } from './database/migrations/17000000
     OrdersModule,
     VerificationModule,
     DatabaseModule,
+    FarmIntelligenceModule,
+    AchievementsModule,
     RewardsModule,
     NotificationsModule,
     AdminModule,

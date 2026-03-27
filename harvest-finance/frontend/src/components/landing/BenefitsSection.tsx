@@ -1,86 +1,118 @@
 "use client";
 
-import React from 'react';
-import { motion } from 'framer-motion';
-import { Container } from '@/components/ui';
-import { Droplet, Eye, LockKeyhole } from 'lucide-react';
+import React from "react";
+import { motion } from "framer-motion";
+import { Container } from "@/components/ui";
+import { Leaf, ShieldCheck, Globe, BarChart3, Sprout } from "lucide-react";
 
 const benefits = [
-  {
-    title: 'Sustainable Finance',
-    description: 'We prioritize eco-friendly blockchain networks and sustainable yield strategies to minimize environmental impact.',
-    icon: <Droplet className="w-6 h-6 text-white" />,
-    color: 'bg-emerald-500',
-  },
-  {
-    title: 'Transparent Yields',
-    description: 'Real-time on-chain analytics and open-source smart contracts ensure you always know where your returns come from.',
-    icon: <Eye className="w-6 h-6 text-white" />,
-    color: 'bg-harvest-green-500',
-  },
-  {
-    title: 'Secure Contracts',
-    description: 'Audited by top security firms with multi-sig protections and timelocks to keep your assets safe at all times.',
-    icon: <LockKeyhole className="w-6 h-6 text-white" />,
-    color: 'bg-teal-500',
-  },
+    {
+        title: "Sustainable Finance",
+        description:
+            "Invest in eco-friendly opportunities that promote long-term environmental and financial growth.",
+        icon: Leaf,
+    },
+    {
+        title: "Transparent Yield Farming",
+        description:
+            "Clear insights into APY, rewards, and performance with no hidden complexities.",
+        icon: BarChart3,
+    },
+    {
+        title: "Secure Smart Contracts",
+        description:
+            "Audited and reliable contracts ensuring your funds remain safe at all times.",
+        icon: ShieldCheck,
+    },
+    {
+        title: "Global Reach",
+        description:
+            "Access decentralized financial tools from anywhere in the world.",
+        icon: Globe,
+    },
+    {
+        title: "Growth-Oriented Ecosystem",
+        description:
+            "A platform designed to help your investments grow steadily.",
+        icon: Sprout,
+    },
 ];
 
 export const BenefitsSection = () => {
-  return (
-    <section id="benefits" className="py-24 bg-white dark:bg-black relative overflow-hidden">
-      {/* Decorative gradient blur */}
-      <div className="absolute -left-40 top-20 w-80 h-80 bg-harvest-green-200/40 dark:bg-harvest-green-900/20 blur-3xl rounded-full mix-blend-multiply dark:mix-blend-screen pointer-events-none"></div>
+    return (
+        <section className="py-24 bg-white dark:bg-black relative overflow-hidden">
+            {/* Background (from your version) */}
+            <div className="absolute -left-40 top-20 w-80 h-80 bg-green-200/40 dark:bg-green-900/20 blur-3xl rounded-full mix-blend-multiply dark:mix-blend-screen pointer-events-none"></div>
 
-      <Container size="lg">
-        <div className="flex flex-col md:flex-row gap-16 items-center">
-          <div className="flex-1">
-            <motion.h2 
-              initial={{ opacity: 0, x: -30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              className="text-3xl md:text-5xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 mb-6 leading-tight"
-            >
-              Finance that works for you, <br/>
-              <span className="text-harvest-green-600 dark:text-harvest-green-500">and the planet.</span>
-            </motion.h2>
-            <motion.p 
-              initial={{ opacity: 0, x: -30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.1 }}
-              className="text-lg text-zinc-600 dark:text-zinc-400 mb-8"
-            >
-              Harvest Finance bridges the gap between traditional yields and modern decentralized finance, maintaining a focus on security, transparency, and sustainability.
-            </motion.p>
-          </div>
-          
-          <div className="flex-1 flex flex-col gap-8 w-full">
-            {benefits.map((benefit, index) => (
-              <motion.div 
-                key={index}
-                initial={{ opacity: 0, x: 30 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.15 }}
-                className="flex gap-6 group"
-              >
-                <div className={`shrink-0 w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg ${benefit.color} transition-transform group-hover:-translate-y-1`}>
-                  {benefit.icon}
+            <Container size="lg">
+                <div className="flex flex-col gap-16 items-center">
+                    {/* LEFT SIDE (unchanged from yours) */}
+                    <div className="flex-1 text-center">
+                        <motion.h2
+                            initial={{ opacity: 0, x: -30 }}
+                            whileInView={{ opacity: 1, x: 0 }}
+                            viewport={{ once: true }}
+                            className="text-3xl md:text-5xl font-bold tracking-tight  text-zinc-900 dark:text-zinc-50 mb-6 leading-tight"
+                        >
+                            Why Choose Harvest Finance?
+                            <br />
+                            <span className="text-green-600 dark:text-green-500">
+                                Built for sustainable growth.
+                            </span>
+                        </motion.h2>
+
+                        <motion.p
+                            initial={{ opacity: 0, x: -30 }}
+                            whileInView={{ opacity: 1, x: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ delay: 0.1 }}
+                            className="text-lg text-zinc-600 dark:text-zinc-400 mb-8"
+                        >
+                            Harvest Finance empowers users with secure,
+                            transparent, and globally accessible financial tools
+                            designed for long-term growth.
+                        </motion.p>
+                    </div>
+
+                    {/* RIGHT SIDE (card-style benefits) */}
+                    <div className="flex-1 grid gap-6 sm:grid-cols-3">
+                        {benefits.map((benefit, index) => {
+                            const Icon = benefit.icon;
+
+                            return (
+                                <motion.div
+                                    key={index}
+                                    initial={{ opacity: 0, y: 25 }}
+                                    whileInView={{ opacity: 1, y: 0 }}
+                                    viewport={{ once: true }}
+                                    transition={{
+                                        duration: 0.4,
+                                        delay: index * 0.08,
+                                    }}
+                                    className="group"
+                                >
+                                    {/* CARD */}
+                                    <div className="h-full rounded-2xl border border-gray-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/60 backdrop-blur-sm p-6 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-1">
+                                        {/* ICON */}
+                                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-green-100 text-green-600 mb-4 group-hover:bg-green-600 group-hover:text-white transition-colors">
+                                            <Icon size={20} />
+                                        </div>
+
+                                        {/* CONTENT */}
+                                        <h3 className="text-lg font-semibold text-gray-900 dark:text-zinc-100">
+                                            {benefit.title}
+                                        </h3>
+
+                                        <p className="mt-2 text-sm text-gray-600 dark:text-zinc-400 leading-relaxed">
+                                            {benefit.description}
+                                        </p>
+                                    </div>
+                                </motion.div>
+                            );
+                        })}
+                    </div>
                 </div>
-                <div>
-                  <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mb-2">
-                    {benefit.title}
-                  </h3>
-                  <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                    {benefit.description}
-                  </p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </Container>
-    </section>
-  );
+            </Container>
+        </section>
+    );
 };
