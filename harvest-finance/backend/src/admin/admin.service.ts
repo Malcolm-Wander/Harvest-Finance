@@ -30,7 +30,13 @@ export class AdminService {
    * Get overall dashboard metrics
    */
   async getDashboardStats(): Promise<DashboardStatsDto> {
-    const [totalDepositsResult, activeUsersCount, totalRewardsResult, activeVaultsCount, avgApyResult] = await Promise.all([
+    const [totalUsers, activeUsersCount, totalDepositsResult, totalRewardsResult, activeVaultsCount, avgApyResult] = await Promise.all([
+      // Total number of users in the system
+      this.userRepository.count(),
+
+      // Active user accounts
+      this.userRepository.count({ where: { isActive: true } }),
+
       // Total Deposits
       this.depositRepository
         .createQueryBuilder('deposit')
@@ -38,13 +44,6 @@ export class AdminService {
         .where('deposit.status = :status', { status: DepositStatus.CONFIRMED })
         .getRawOne(),
       
-      // Active Users
-      this.depositRepository
-        .createQueryBuilder('deposit')
-        .select('COUNT(DISTINCT deposit.userId)', 'count')
-        .where('deposit.status = :status', { status: DepositStatus.CONFIRMED })
-        .getRawOne(),
-
       // Total Rewards Distributed
       this.rewardRepository
         .createQueryBuilder('reward')
@@ -63,12 +62,40 @@ export class AdminService {
     ]);
 
     return {
+      totalUsers,
+      activeUsers: activeUsersCount,
       totalDeposits: parseFloat(totalDepositsResult?.total || '0'),
-      activeUsers: parseInt(activeUsersCount?.count || '0'),
       totalRewardsDistributed: parseFloat(totalRewardsResult?.total || '0'),
       activeVaults: activeVaultsCount,
       averageApy: parseFloat(avgApyResult?.avg || '0'),
     };
+  }
+
+  /**
+   * Admin user management operations
+   */
+  async getAllUsers(search?: string): Promise<User[]> {
+    const query = this.userRepository.createQueryBuilder('user');
+
+    if (search) {
+      const normalizedSearch = `%${search.toLowerCase()}%`;
+      query.where(
+        'LOWER(user.email) LIKE :search OR LOWER(user.firstName) LIKE :search OR LOWER(user.lastName) LIKE :search OR LOWER(user.role) LIKE :search',
+        { search: normalizedSearch },
+      );
+    }
+
+    return query.orderBy('user.createdAt', 'DESC').getMany();
+  }
+
+  async updateUserStatus(id: string, isActive: boolean): Promise<User> {
+    const user = await this.userRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
+
+    user.isActive = isActive;
+    return this.userRepository.save(user);
   }
 
   /**

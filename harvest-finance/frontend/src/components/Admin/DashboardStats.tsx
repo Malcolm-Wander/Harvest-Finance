@@ -2,10 +2,11 @@
 
 import React from 'react';
 import { Card, CardBody, Stack, Inline } from '@/components/ui';
-import { Users, Landmark, Coins, TrendingUp, BarChart3 } from 'lucide-react';
+import { Users, UserPlus, Landmark, Coins, TrendingUp, BarChart3 } from 'lucide-react';
 
 interface StatsProps {
   stats: {
+    totalUsers: number;
     totalDeposits: number;
     activeUsers: number;
     totalRewardsDistributed: number;
@@ -17,16 +18,22 @@ interface StatsProps {
 export const DashboardStats: React.FC<StatsProps> = ({ stats }) => {
   const statItems = [
     {
-      label: 'Total Deposits',
-      value: `$${stats.totalDeposits.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
-      icon: <Landmark className="w-5 h-5 text-harvest-green-600" />,
-      color: 'bg-harvest-green-50',
+      label: 'Total Users',
+      value: stats.totalUsers.toString(),
+      icon: <Users className="w-5 h-5 text-blue-600" />,
+      color: 'bg-blue-50',
     },
     {
       label: 'Active Users',
       value: stats.activeUsers.toString(),
-      icon: <Users className="w-5 h-5 text-blue-600" />,
-      color: 'bg-blue-50',
+      icon: <UserPlus className="w-5 h-5 text-harvest-green-600" />,
+      color: 'bg-harvest-green-50',
+    },
+    {
+      label: 'Total Deposits',
+      value: `$${stats.totalDeposits.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
+      icon: <Landmark className="w-5 h-5 text-harvest-green-600" />,
+      color: 'bg-harvest-green-50',
     },
     {
       label: 'Rewards Distributed',

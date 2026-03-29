@@ -1,11 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, type FormEvent } from 'react';
 import axios from 'axios';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { 
   Container, 
-  Section, 
   Stack, 
   Inline, 
   Button, 
@@ -21,6 +20,7 @@ import {
 } from '@/components/ui';
 import { DashboardStats } from '@/components/Admin/DashboardStats';
 import { VaultManagement } from '@/components/Admin/VaultManagement';
+import { UserManagement } from '@/components/Admin/UserManagement';
 import { UserActivity } from '@/components/Admin/UserActivity';
 import { LayoutDashboard, ShieldCheck, RefreshCw, AlertCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -30,6 +30,7 @@ export default function AdminDashboardPage() {
   const router = useRouter();
   
   const [stats, setStats] = useState({
+    totalUsers: 0,
     totalDeposits: 0,
     activeUsers: 0,
     totalRewardsDistributed: 0,
@@ -39,6 +40,8 @@ export default function AdminDashboardPage() {
 
   const [vaults, setVaults] = useState([]);
   const [activity, setActivity] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [userSearch, setUserSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,16 +56,19 @@ export default function AdminDashboardPage() {
     setIsLoading(true);
     try {
       const authHeader = { Authorization: `Bearer ${token}` };
-      
-      const [statsRes, vaultsRes, activityRes] = await Promise.all([
+      const userQuery = userSearch ? `?search=${encodeURIComponent(userSearch)}` : '';
+
+      const [statsRes, vaultsRes, activityRes, usersRes] = await Promise.all([
         axios.get(`${API_BASE_URL}/admin/stats`, { headers: authHeader }),
         axios.get(`${API_BASE_URL}/admin/vaults`, { headers: authHeader }),
         axios.get(`${API_BASE_URL}/admin/users/activity`, { headers: authHeader }),
+        axios.get(`${API_BASE_URL}/admin/users${userQuery}`, { headers: authHeader }),
       ]);
 
       setStats(statsRes.data);
       setVaults(vaultsRes.data);
       setActivity(activityRes.data);
+      setUsers(usersRes.data);
     } catch (err: any) {
       console.error('Failed to fetch admin data:', err);
       setError(err.response?.data?.message || 'Failed to load dashboard data. Ensure you have admin privileges.');
@@ -71,8 +77,20 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const fetchUsers = async (searchValue = '') => {
+    if (!token) return;
+    try {
+      const authHeader = { Authorization: `Bearer ${token}` };
+      const userQuery = searchValue ? `?search=${encodeURIComponent(searchValue)}` : '';
+      const usersRes = await axios.get(`${API_BASE_URL}/admin/users${userQuery}`, { headers: authHeader });
+      setUsers(usersRes.data);
+    } catch (err) {
+      console.error('Failed to fetch user list:', err);
+    }
+  };
+
   useEffect(() => {
-    if (!user || user.role !== ('admin' as any)) {
+    if (!user || user.role?.toString().toLowerCase() !== 'admin') {
       router.push('/dashboard');
       return;
     }
@@ -99,6 +117,24 @@ export default function AdminDashboardPage() {
       fetchData();
     } catch (err) {
       alert('Failed to delete vault');
+    }
+  };
+
+  const handleUserSearch = async (value: string) => {
+    setUserSearch(value);
+    await fetchUsers(value);
+  };
+
+  const handleToggleUserStatus = async (id: string, isActive: boolean) => {
+    try {
+      await axios.patch(
+        `${API_BASE_URL}/admin/users/${id}/status`,
+        { isActive },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      await fetchUsers(userSearch);
+    } catch (err) {
+      alert('Failed to update user status');
     }
   };
 
@@ -163,13 +199,20 @@ export default function AdminDashboardPage() {
             onDelete={handleDeleteVault}
           />
           
+          <UserManagement
+            users={users}
+            search={userSearch}
+            onSearch={handleUserSearch}
+            onToggleStatus={handleToggleUserStatus}
+          />
+          
           <UserActivity activities={activity} />
         </div>
       </Stack>
 
       <Modal isOpen={isVaultModalOpen} onClose={() => setIsVaultModalOpen(false)} size="lg">
         <ModalHeader title={editingVault ? 'Edit Vault' : 'Create New Vault'} />
-        <form onSubmit={async (e) => {
+        <form onSubmit={async (e: FormEvent<HTMLFormElement>) => {
           e.preventDefault();
           const formData = new FormData(e.currentTarget);
           const data = {

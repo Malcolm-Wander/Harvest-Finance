@@ -11,10 +11,6 @@ export {
 export { Verification, VerificationStatus } from './verification.entity';
 export type { CreditScoreHistoryEntry } from './credit-score.entity';
 export { CreditScore } from './credit-score.entity';
- feature/portfolio-page
-export { Vault } from './vault.entity';
-export { VaultDeposit } from './vault-deposit.entity';
-=======
 export { Vault, VaultType, VaultStatus } from './vault.entity';
 export { Deposit, DepositStatus } from './deposit.entity';
 export { Withdrawal, WithdrawalStatus } from './withdrawal.entity';
@@ -24,4 +20,3 @@ export * from './farm-vault.entity';
 export { Achievement, AchievementType } from './achievement.entity';
 export { Reward, RewardStatus } from './reward.entity';
 export { Notification, NotificationType } from './notification.entity';
- main
