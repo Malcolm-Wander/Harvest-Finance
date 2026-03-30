@@ -1,5 +1,5 @@
 import { CacheModule } from '@nestjs/cache-manager';
-import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -38,8 +38,8 @@ import { ExportModule } from './export/export.module';
 import { FarmIntelligenceModule } from './farm-intelligence/farm-intelligence.module';
 import { FarmVaultsModule } from './farm-vaults/farm-vaults.module';
 import { HealthModule } from './health/health.module';
-import { LoggerModule } from './logger/logger.module';
 import { LoggerMiddleware } from './logger/logger.middleware';
+import { LoggerModule } from './logger/logger.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { OrdersModule } from './orders/orders.module';
 import { RealtimeModule } from './realtime/realtime.module';
@@ -75,7 +75,6 @@ import { VerificationModule } from './verification/verification.module';
           Verification,
           CreditScore,
           Vault,
-          VaultDeposit,
           Deposit,
           Achievement,
           Reward,
@@ -83,6 +82,7 @@ import { VerificationModule } from './verification/verification.module';
           Withdrawal,
           CropCycle,
           FarmVault,
+          VaultDeposit,
         ],
         migrations: [
           CreateInitialSchema1700000000000,

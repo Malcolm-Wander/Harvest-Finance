@@ -2,25 +2,36 @@
 
 import React, { useState } from "react";
 import {
-  Modal,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
+  Badge,
   Button,
   Input,
+  Modal,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
   Stack,
-  Badge,
 } from "@/components/ui";
-import { Wallet, ArrowUpRight } from "lucide-react";
-import axios from "@/lib/api-client";
-import { useAuthStore } from "@/lib/stores/auth-store";
 import { enqueueOfflineAction } from "@/lib/offline-support";
+import { useAuthStore } from "@/lib/stores/auth-store";
+import axios from "@/lib/api-client";
+import { ArrowUpRight, Wallet } from "lucide-react";
+
+interface DepositModalVault {
+  id: string;
+  name: string;
+  asset: string;
+  walletBalance: string;
+  tvl: string;
+  balance?: number | string;
+  cropCycle?: { yieldRate: number };
+}
 
 interface DepositModalProps {
   isOpen: boolean;
   onClose: () => void;
-  vault: any;
+  vault: DepositModalVault | null;
   onSuccess?: () => void;
+  onDepositSuccess?: (vaultId: string, amount: number) => void;
 }
 
 export const DepositModal: React.FC<DepositModalProps> = ({
@@ -28,6 +39,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({
   onClose,
   vault,
   onSuccess,
+  onDepositSuccess,
 }) => {
   const { token } = useAuthStore();
   const [amount, setAmount] = useState("");
@@ -35,6 +47,11 @@ export const DepositModal: React.FC<DepositModalProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   const handleDeposit = async () => {
+    if (!vault) {
+      setError("Please select a vault");
+      return;
+    }
+
     if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
       setError("Please enter a valid amount");
       return;
@@ -50,6 +67,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({
           payload: { amount: Number(amount) },
         });
         onSuccess?.();
+        onDepositSuccess?.(vault.id, Number(amount));
         onClose();
         setAmount("");
         return;
@@ -60,7 +78,9 @@ export const DepositModal: React.FC<DepositModalProps> = ({
         { amount: Number(amount) },
         { headers: { Authorization: `Bearer ${token}` } },
       );
+
       onSuccess?.();
+      onDepositSuccess?.(vault.id, Number(amount));
       onClose();
       setAmount("");
     } catch (err: any) {
@@ -81,12 +101,14 @@ export const DepositModal: React.FC<DepositModalProps> = ({
         <Stack gap="lg">
           <div className="flex items-center justify-between rounded-xl border border-harvest-green-100 bg-harvest-green-50 p-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-harvest-green-700">
+              <p className="text-xs font-semibold text-harvest-green-700 uppercase tracking-wider">
                 Active Vault
               </p>
-              <h4 className="font-bold text-gray-900">{vault.name}</h4>
+              <h4 className="font-bold text-gray-900">{vault?.name}</h4>
             </div>
-            <Badge variant="success">APY: {vault.cropCycle?.yieldRate}%</Badge>
+            <Badge variant="success">
+              APY: {vault?.cropCycle?.yieldRate ?? 0}%
+            </Badge>
           </div>
 
           <Input
@@ -103,14 +125,16 @@ export const DepositModal: React.FC<DepositModalProps> = ({
           <div className="rounded-lg border border-gray-100 bg-gray-50 p-3 text-sm text-gray-500">
             <p className="mb-1 flex justify-between">
               <span>Current Balance:</span>
-              <span className="font-bold text-gray-900">${vault.balance}</span>
+              <span className="font-bold text-gray-900">
+                ${vault?.balance ?? 0}
+              </span>
             </p>
             <p className="flex justify-between">
               <span>Estimated Seasonal Yield:</span>
               <span className="font-bold text-harvest-green-600">
                 +$
                 {(
-                  ((Number(amount) || 0) * (vault.cropCycle?.yieldRate || 0)) /
+                  ((Number(amount) || 0) * (vault?.cropCycle?.yieldRate || 0)) /
                   100
                 ).toFixed(2)}
               </span>

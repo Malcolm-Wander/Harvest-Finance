@@ -1,11 +1,11 @@
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { IoAdapter } from '@nestjs/platform-socket.io';
-import { ThrottlerExceptionFilter } from './common/filters/throttler-exception.filter';
-import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { ThrottlerExceptionFilter } from './common/filters/throttler-exception.filter';
 import { CustomLoggerService } from './logger/custom-logger.service';
 
 async function bootstrap() {

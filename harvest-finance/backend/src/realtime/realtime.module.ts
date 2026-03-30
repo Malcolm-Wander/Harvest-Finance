@@ -4,6 +4,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { RealtimeGateway } from './realtime.gateway';
 import { RealtimeService } from './realtime.service';
 import { RealtimeController } from './realtime.controller';
+import { VaultGateway } from './vault.gateway';
 import { User } from '../database/entities/user.entity';
 import { Deposit } from '../database/entities/deposit.entity';
 import { Withdrawal } from '../database/entities/withdrawal.entity';
@@ -17,7 +18,7 @@ import { Reward } from '../database/entities/reward.entity';
     TypeOrmModule.forFeature([User, Deposit, Withdrawal, Vault, FarmVault, Reward]),
   ],
   controllers: [RealtimeController],
-  providers: [RealtimeGateway, RealtimeService],
-  exports: [RealtimeService],
+  providers: [RealtimeGateway, RealtimeService, VaultGateway],
+  exports: [RealtimeService, VaultGateway],
 })
 export class RealtimeModule {}

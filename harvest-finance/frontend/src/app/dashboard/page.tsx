@@ -6,10 +6,11 @@ import { ConnectivityBanner } from "@/components/dashboard/ConnectivityBanner";
 import { CropRecommendationPanel } from "@/components/dashboard/CropRecommendationPanel";
 import { FarmActivityMap } from "@/components/dashboard/FarmActivityMap";
 import { VaultOverview } from "@/components/dashboard/VaultOverview";
+import { VaultActivityFeed } from "@/components/dashboard/VaultActivityFeed";
 import { WeatherWidget } from "@/components/dashboard/WeatherWidget";
 import {
-  SeasonalTipsList,
   MilestoneNotification,
+  SeasonalTipsList,
 } from "@/components/seasonal-tips";
 import { useAIAssistantStore } from "@/hooks/useAIAssistant";
 import { Badge, Button, Card, CardBody } from "@/components/ui";
@@ -346,7 +347,14 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      <VaultOverview />
+      <div className="pt-4 border-t border-gray-200">
+        <VaultOverview />
+      </div>
+
+      <div className="pt-4 border-t border-gray-200">
+        <VaultActivityFeed />
+      </div>
+
       <AIAssistantChat context={aiContext} />
     </div>
   );
