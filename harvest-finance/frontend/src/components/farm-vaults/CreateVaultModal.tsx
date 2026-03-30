@@ -17,7 +17,7 @@ import {
 } from '@/components/ui';
 import { Sprout, Wheat, Coffee, Leaf, ChevronRight, Check } from 'lucide-react';
 import { useAuthStore } from '@/lib/stores/auth-store';
-import axios from 'axios';
+import axios from '@/lib/api-client';
 
 const iconMap: Record<string, any> = {
   Sprout,

@@ -27,7 +27,7 @@ import {
   CircleHelp
 } from 'lucide-react';
 import { useAuthStore } from '@/lib/stores/auth-store';
-import axios from 'axios';
+import axios from '@/lib/api-client';
 import { CreateVaultModal } from '@/components/farm-vaults/CreateVaultModal';
 import { FarmVaultCard } from '@/components/farm-vaults/FarmVaultCard';
 import { VaultAnalytics } from '@/components/dashboard/VaultAnalytics';

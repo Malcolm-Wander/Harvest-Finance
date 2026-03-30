@@ -18,7 +18,7 @@ import {
 } from '@/components/ui';
 import { Download, ArrowRightLeft, Calendar, Tag, Coins, Info } from 'lucide-react';
 import { useAuthStore } from '@/lib/stores/auth-store';
-import axios from 'axios';
+import axios from '@/lib/api-client';
 
 // Mock transactions for display since we might not have many in the DB yet
 const mockTransactions = [

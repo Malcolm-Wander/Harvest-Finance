@@ -12,7 +12,7 @@ import {
   Badge
 } from '@/components/ui';
 import { Wallet, ArrowDownLeft, AlertTriangle } from 'lucide-react';
-import axios from 'axios';
+import axios from '@/lib/api-client';
 import { useAuthStore } from '@/lib/stores/auth-store';
 
 interface WithdrawModalProps {

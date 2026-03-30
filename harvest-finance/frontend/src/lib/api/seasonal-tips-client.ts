@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios from '@/lib/api-client';
 import type {
   SeasonalTipsResponse,
   TipsQueryParams,

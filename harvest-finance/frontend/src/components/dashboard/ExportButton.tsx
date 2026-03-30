@@ -3,7 +3,7 @@
 import React from 'react';
 import { Button } from '@/components/ui';
 import { Download, ChevronDown, FileText, Table as TableIcon } from 'lucide-react';
-import axios from 'axios';
+import axios from '@/lib/api-client';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { 
   DropdownMenu, 

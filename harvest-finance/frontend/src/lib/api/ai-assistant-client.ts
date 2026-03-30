@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios from '@/lib/api-client';
 
 // Use relative API path by default so requests resolve to the same origin (avoids CORS in dev)
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';

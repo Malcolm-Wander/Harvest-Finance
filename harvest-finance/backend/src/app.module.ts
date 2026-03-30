@@ -1,4 +1,6 @@
-import { Module } from '@nestjs/common';
+import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
+import { LoggerModule } from './logger/logger.module';
+import { LoggerMiddleware } from './logger/logger.middleware';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CacheModule } from '@nestjs/cache-manager';
@@ -25,6 +27,7 @@ import {
   Verification,
   CreditScore,
   Vault,
+  VaultDeposit,
   Deposit,
   Notification,
   Achievement,
@@ -62,6 +65,7 @@ import { CreateFarmVaults1700000000008 } from './database/migrations/17000000000
           Verification,
           CreditScore,
           Vault,
+          VaultDeposit,
           Deposit,
           Achievement,
           Reward,
@@ -104,8 +108,13 @@ import { CreateFarmVaults1700000000008 } from './database/migrations/17000000000
     AdminModule,
     ExportModule,
     FarmVaultsModule,
+    LoggerModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(LoggerMiddleware).forRoutes('*');
+  }
+}

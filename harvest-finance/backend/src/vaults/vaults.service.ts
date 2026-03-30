@@ -17,6 +17,7 @@ import {
 } from './dto/vault-response.dto';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '../database/entities/notification.entity';
+import { CustomLoggerService } from '../logger/custom-logger.service';
 
 @Injectable()
 export class VaultsService {
@@ -29,6 +30,7 @@ export class VaultsService {
     private withdrawalRepository: Repository<Withdrawal>,
     private dataSource: DataSource,
     private notificationsService: NotificationsService,
+    private logger: CustomLoggerService,
   ) {}
 
   /**
@@ -135,6 +137,8 @@ export class VaultsService {
     const userTotalDeposits = await this.getUserTotalDeposits(userId);
 
     // Map to response DTOs
+    this.logger.log(`Deposit of ${amount} confirmed into vault ${vaultId} by user ${userId}`, 'VaultsService');
+
     return {
       vault: result.vault ? this.mapVaultToResponse(result.vault) : null,
       deposit: this.mapDepositToResponse(confirmedDeposit),
@@ -320,6 +324,8 @@ export class VaultsService {
       message: `Your withdrawal of ${amount} from vault ${vault.vaultName} has been confirmed.`,
       type: NotificationType.DEPOSIT, // Using DEPOSIT type as a proxy for transaction notifications
     });
+
+    this.logger.log(`Withdrawal of ${amount} confirmed from vault ${vaultId} by user ${userId}`, 'VaultsService');
 
     return {
       withdrawal: confirmedWithdrawal,
