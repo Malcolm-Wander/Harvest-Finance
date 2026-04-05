@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /* Harvest Finance UI - Custom Theme Configuration */
-@theme {
+:root {
   /* Primary Agricultural Green Palette */
   --color-harvest-green-50: #f0fdf4;
   --color-harvest-green-100: #dcfce7;
@@ -19,9 +19,8 @@
   --color-warning-light: #fef3c7;
   --color-error-light: #fee2e2;
   --color-info-light: #dbeafe;
-}
 
-:root {
+  /* Background & Foreground */
   --background: #f4f8f0;
   --foreground: #16331c;
   --surface: rgba(255, 255, 255, 0.9);
@@ -40,38 +39,27 @@
 
 /* Base Styles */
 body {
-  background: var(--background);
+  background:
+    radial-gradient(circle at top, rgba(141, 187, 85, 0.22), transparent 28%),
+    linear-gradient(180deg, #fbfdf8 0%, var(--background) 100%);
   color: var(--foreground);
-  font-family:
-    "Inter",
-    system-ui,
-    -apple-system,
-    sans-serif;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-/* Focus Visible Styles */
-*:focus-visible {
-  outline: 2px solid var(--color-harvest-green-500);
-  outline-offset: 2px;
 }
 
 * {
   box-sizing: border-box;
 }
 
-html {
-  scroll-behavior: smooth;
+*:focus-visible {
+  outline: 2px solid var(--color-harvest-green-500);
+  outline-offset: 2px;
 }
 
-body {
-  background:
-    radial-gradient(circle at top, rgba(141, 187, 85, 0.22), transparent 28%),
-    linear-gradient(180deg, #fbfdf8 0%, var(--background) 100%);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
-  min-height: 100vh;
+html {
+  scroll-behavior: smooth;
 }
 
 a,
@@ -89,7 +77,9 @@ input {
   background: rgba(47, 122, 66, 0.18);
 }
 
+/* Tailwind Components Layer */
 @layer components {
+  /* Layout Wrappers */
   .page-shell {
     @apply min-h-screen px-4 py-6 sm:px-6 lg:px-8;
   }
@@ -98,6 +88,7 @@ input {
     @apply mx-auto w-full max-w-7xl;
   }
 
+  /* Surface Cards */
   .surface-card {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -118,6 +109,7 @@ input {
     @apply rounded-3xl p-5 sm:p-6;
   }
 
+  /* Typography */
   .eyebrow {
     color: var(--brand-strong);
     background: var(--brand-soft);
@@ -136,6 +128,7 @@ input {
     @apply mb-2 block text-sm font-medium text-slate-700;
   }
 
+  /* Forms */
   .input-field {
     background: #fcfdfb;
     border: 1px solid rgba(51, 93, 60, 0.18);
@@ -151,12 +144,9 @@ input {
     @apply cursor-not-allowed opacity-60;
   }
 
+  /* Buttons */
   .btn-primary {
-    background: linear-gradient(
-      135deg,
-      var(--brand) 0%,
-      var(--brand-strong) 100%
-    );
+    background: linear-gradient(135deg, var(--brand) 0%, var(--brand-strong) 100%);
     @apply inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-green-900/15;
   }
 
@@ -189,6 +179,7 @@ input {
     color: var(--brand-strong);
   }
 
+  /* Status Banners */
   .status-banner {
     @apply flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm;
   }
@@ -205,6 +196,7 @@ input {
     color: var(--brand-strong);
   }
 
+  /* Password Toggle */
   .password-toggle {
     @apply absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-slate-400;
   }
@@ -218,12 +210,17 @@ input {
     @apply outline-none;
   }
 
+  /* Auth Layout */
   .auth-layout {
     @apply grid gap-6 lg:grid-cols-[1.08fr_0.92fr];
   }
 
   .auth-panel {
-    @apply surface-card relative overflow-hidden p-6 sm:p-8 lg:p-10;
+    @apply relative overflow-hidden p-6 sm:p-8 lg:p-10;
+    background: var(--surface); /* Add surface-card styles directly */
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    border-radius: 28px; 
   }
 
   .auth-grid {
@@ -251,8 +248,13 @@ input {
     border-color: rgba(51, 93, 60, 0.12);
   }
 
+  /* Navigation */
   .top-nav {
-    @apply surface-card mb-6 flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center sm:justify-between;
+    @apply mb-6 flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center sm:justify-between;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    border-radius: 28px;
   }
 
   .nav-links {
@@ -268,17 +270,10 @@ input {
     color: var(--brand-strong);
   }
 
-  .hero-grid {
-    @apply grid gap-6 lg:grid-cols-[1.15fr_0.85fr];
-  }
-
+  /* Metrics & Charts */
   .metric-card {
     @apply rounded-[24px] border p-5;
-    background: linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.98),
-      rgba(244, 248, 240, 0.88)
-    );
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 248, 240, 0.88));
     border-color: rgba(47, 122, 66, 0.12);
   }
 
@@ -288,11 +283,7 @@ input {
 
   .chart-bar {
     @apply flex-1 rounded-t-2xl;
-    background: linear-gradient(
-      180deg,
-      rgba(141, 187, 85, 0.95),
-      rgba(47, 122, 66, 0.95)
-    );
+    background: linear-gradient(180deg, rgba(141, 187, 85, 0.95), rgba(47, 122, 66, 0.95));
   }
 
   .muted-divider {
