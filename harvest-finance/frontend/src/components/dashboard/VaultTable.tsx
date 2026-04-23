@@ -11,6 +11,7 @@ import {
   Badge,
   Button,
   Inline,
+  StrategyBadge,
 } from '@/components/ui';
 import { 
   ArrowUpDown, 
@@ -121,6 +122,7 @@ export const VaultTable: React.FC<VaultTableProps> = ({
                 {renderSortIcon('riskLevel')}
               </Inline>
             </TableHead>
+            <TableHead>Strategy</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -151,6 +153,9 @@ export const VaultTable: React.FC<VaultTableProps> = ({
                   {vault.riskLevel}
                 </Badge>
               </TableCell>
+              <TableCell>
+                {vault.strategyType ? <StrategyBadge strategyType={vault.strategyType} /> : <span className="text-gray-400">—</span>}
+              </TableCell>
               <TableCell className="text-right">
                 <div className="flex justify-end gap-2 items-center">
                   <Button 
@@ -176,7 +181,7 @@ export const VaultTable: React.FC<VaultTableProps> = ({
           ))}
           {sortedVaults.length === 0 && (
             <TableRow>
-              <TableCell colSpan={5} className="h-24 text-center text-gray-500">
+              <TableCell colSpan={6} className="h-24 text-center text-gray-500">
                 No vaults found.
               </TableCell>
             </TableRow>
