@@ -10,20 +10,23 @@ import { AdminModule } from './admin/admin.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
- feat/withdraw-api
-import { User, Order, Transaction, Verification, CreditScore, Vault, VaultDeposit } from './database/entities';
-=======
+import { AiQueryHistoryModule } from './ai-query-history/ai-query-history.module';
 import { UsersModule } from './users/users.module';
 import { VaultsModule } from './vaults/vaults.module';
 import { FarmIntelligenceModule } from './farm-intelligence/farm-intelligence.module';
-import { AchievementsModule } from './achievements/achievements.module';
-import { RewardsModule } from './rewards/rewards.module';
-import { AdminModule } from './admin/admin.module';
-import { NotificationsModule } from './notifications/notifications.module';
 import { ExportModule } from './export/export.module';
 import { FarmVaultsModule } from './farm-vaults/farm-vaults.module';
-import { InsuranceModule } from './insurance/insurance.module';
+import { HealthModule } from './health/health.module';
+import { OrdersModule } from './orders/orders.module';
+import { VerificationModule } from './verification/verification.module';
 import { DatabaseModule } from './database/database.module';
+import { RewardsModule } from './rewards/rewards.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { RealtimeModule } from './realtime/realtime.module';
+import { LoggerModule } from './logger/logger.module';
+import { LoggerMiddleware } from './logger/logger.middleware';
+import { InsuranceModule } from './insurance/insurance.module';
+
 import {
   Achievement,
   CreditScore,
@@ -39,15 +42,12 @@ import {
   Vault,
   VaultDeposit,
   Withdrawal,
-  CropCycle,
-  FarmVault,
   InsurancePlan,
   InsuranceSubscription,
 } from './database/entities';
- main
+
 import { CreateInitialSchema1700000000000 } from './database/migrations/1700000000000-CreateInitialSchema';
- feat/withdraw-api
-import { VaultsModule } from './vaults/vaults.module';
+import { CreateVaultsAndDeposits1700000000003 } from './database/migrations/1700000000003-CreateVaultsAndDeposits';
 import { CreateAchievements1700000000004 } from './database/migrations/1700000000004-CreateAchievements';
 import { CreateRewards1700000000005 } from './database/migrations/1700000000005-CreateRewards';
 import { CreateNotifications1700000000006 } from './database/migrations/1700000000006-CreateNotifications';
@@ -55,19 +55,6 @@ import { CreateWithdrawals1700000000007 } from './database/migrations/1700000000
 import { CreateFarmVaults1700000000008 } from './database/migrations/1700000000008-CreateFarmVaults';
 import { CreateInsurance1700000000009 } from './database/migrations/1700000000009-CreateInsurance';
 import { AddInsuranceNotificationType1700000000010 } from './database/migrations/1700000000010-AddInsuranceNotificationType';
-import { ExportModule } from './export/export.module';
-import { FarmIntelligenceModule } from './farm-intelligence/farm-intelligence.module';
-import { FarmVaultsModule } from './farm-vaults/farm-vaults.module';
-import { HealthModule } from './health/health.module';
-import { LoggerMiddleware } from './logger/logger.middleware';
-import { LoggerModule } from './logger/logger.module';
-import { NotificationsModule } from './notifications/notifications.module';
-import { OrdersModule } from './orders/orders.module';
-import { RealtimeModule } from './realtime/realtime.module';
-import { RewardsModule } from './rewards/rewards.module';
-import { UsersModule } from './users/users.module';
-import { VaultsModule } from './vaults/vaults.module';
-import { VerificationModule } from './verification/verification.module';
 
 @Module({
   imports: [
@@ -82,8 +69,7 @@ import { VerificationModule } from './verification/verification.module';
       },
     ]),
     TypeOrmModule.forRootAsync({
-      imports: [
-    AiQueryHistoryModule,ConfigModule],
+      imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
         type: 'postgres',
         host: configService.get<string>('DB_HOST'),
@@ -91,10 +77,6 @@ import { VerificationModule } from './verification/verification.module';
         username: configService.get<string>('DB_USER'),
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_NAME'),
- feat/withdraw-api
-        entities: [User, Order, Transaction, Verification, CreditScore, Vault, VaultDeposit],
-        migrations: [CreateInitialSchema1700000000000],
-=======
         entities: [
           User,
           Order,
@@ -124,8 +106,6 @@ import { VerificationModule } from './verification/verification.module';
           CreateInsurance1700000000009,
           AddInsuranceNotificationType1700000000010,
         ],
-        synchronize: false, // Disable auto-sync, use migrations
-        migrationsRun: false, // Run migrations manually
         synchronize: false,
         migrationsRun: false,
         logging: configService.get<string>('NODE_ENV') === 'development',
@@ -145,15 +125,11 @@ import { VerificationModule } from './verification/verification.module';
     OrdersModule,
     VerificationModule,
     DatabaseModule,
- feat/withdraw-api
-    VaultsModule,
-=======
     FarmIntelligenceModule,
     AchievementsModule,
     RewardsModule,
     NotificationsModule,
     AdminModule,
- main
     ExportModule,
     FarmVaultsModule,
     InsuranceModule,

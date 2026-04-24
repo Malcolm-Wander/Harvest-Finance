@@ -2,57 +2,75 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { VaultsService } from './vaults.service';
-import { Vault, VaultDeposit } from '../database/entities';
+import { Vault, VaultStatus } from '../database/entities/vault.entity';
+import { Deposit } from '../database/entities/deposit.entity';
+import { Withdrawal } from '../database/entities/withdrawal.entity';
+import { NotificationsService } from '../notifications/notifications.service';
+import { CustomLoggerService } from '../logger/custom-logger.service';
+import { VaultGateway } from '../realtime/vault.gateway';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 
 describe('VaultsService', () => {
   let service: VaultsService;
-  let dataSource: DataSource;
 
-  const mockVault = {
-    id: 'vault-1',
-    name: 'Test Vault',
-    totalDeposits: 1000,
-    liquidity: 500,
-  };
-
-  const mockUserDeposit = {
-    id: 'deposit-1',
-    balance: 200,
-    user: { id: 'user-1' },
-    vault: { id: 'vault-1' },
-  };
-
-  const mockEntityManager = {
+  const mockVaultRepository = {
     findOne: jest.fn(),
-    save: jest.fn(),
+    find: jest.fn(),
+  };
+
+  const mockGetRawOne = jest.fn().mockResolvedValue({ total: '1000' });
+
+  const mockDepositRepository = {
+    create: jest.fn(),
+    findOne: jest.fn(),
+    update: jest.fn(),
+    createQueryBuilder: jest.fn(() => ({
+      select: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      getRawOne: mockGetRawOne,
+    })),
+  };
+
+  const mockWithdrawalRepository = {
+    create: jest.fn(),
+    findOne: jest.fn(),
+    update: jest.fn(),
   };
 
   const mockDataSource = {
-    transaction: jest.fn((cb) => cb(mockEntityManager)),
+    transaction: jest.fn(),
+  };
+
+  const mockNotificationsService = {
+    create: jest.fn(),
+  };
+
+  const mockLoggerService = {
+    log: jest.fn(),
+    error: jest.fn(),
+  };
+
+  const mockVaultGateway = {
+    emitDeposit: jest.fn(),
+    emitWithdrawal: jest.fn(),
   };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         VaultsService,
-        {
-          provide: getRepositoryToken(Vault),
-          useValue: {},
-        },
-        {
-          provide: getRepositoryToken(VaultDeposit),
-          useValue: {},
-        },
-        {
-          provide: DataSource,
-          useValue: mockDataSource,
-        },
+        { provide: getRepositoryToken(Vault), useValue: mockVaultRepository },
+        { provide: getRepositoryToken(Deposit), useValue: mockDepositRepository },
+        { provide: getRepositoryToken(Withdrawal), useValue: mockWithdrawalRepository },
+        { provide: DataSource, useValue: mockDataSource },
+        { provide: NotificationsService, useValue: mockNotificationsService },
+        { provide: CustomLoggerService, useValue: mockLoggerService },
+        { provide: VaultGateway, useValue: mockVaultGateway },
       ],
     }).compile();
 
     service = module.get<VaultsService>(VaultsService);
-    dataSource = module.get<DataSource>(DataSource);
   });
 
   afterEach(() => {
@@ -63,59 +81,51 @@ describe('VaultsService', () => {
     expect(service).toBeDefined();
   });
 
-  describe('withdraw', () => {
+  describe('withdrawFromVault', () => {
+    const mockVault = {
+      id: 'vault-1',
+      vaultName: 'Test Vault',
+      totalDeposits: 5000,
+      status: VaultStatus.ACTIVE,
+    };
+
     it('should successfully withdraw tokens', async () => {
-      mockEntityManager.findOne
-        .mockResolvedValueOnce({ ...mockVault }) // First call for Vault
-        .mockResolvedValueOnce({ ...mockUserDeposit }); // Second call for VaultDeposit
-
-      mockEntityManager.save.mockImplementation((entity, data) => Promise.resolve(data));
-
-      const result = await service.withdraw('vault-1', {
-        userId: 'user-1',
-        amount: 100,
+      mockVaultRepository.findOne.mockResolvedValueOnce(mockVault);
+      mockGetRawOne.mockResolvedValueOnce({ total: '1000' });
+      
+      const mockWithdrawal = { id: 'withdraw-1', amount: 100 };
+      mockWithdrawalRepository.create.mockReturnValue(mockWithdrawal);
+      
+      mockDataSource.transaction.mockImplementation(async (cb) => {
+        return cb({
+          save: jest.fn().mockResolvedValue(mockWithdrawal),
+          decrement: jest.fn(),
+          findOne: jest.fn().mockResolvedValue({ ...mockVault, totalDeposits: 4900 }),
+          update: jest.fn(),
+        });
       });
 
-      expect(result.userBalance).toBe(100);
-      expect(result.vault.totalDeposits).toBe(900);
-      expect(result.vault.liquidity).toBe(400);
-      expect(mockEntityManager.save).toHaveBeenCalledTimes(2);
+      mockWithdrawalRepository.findOne.mockResolvedValueOnce({ ...mockWithdrawal, status: 'CONFIRMED' });
+
+      const result = await service.withdrawFromVault('vault-1', 'user-1', 100);
+
+      expect(result).toBeDefined();
+      expect(result.withdrawal.amount).toBe(100);
+      expect(mockVaultGateway.emitWithdrawal).toHaveBeenCalled();
+      expect(mockNotificationsService.create).toHaveBeenCalled();
     });
 
     it('should throw NotFoundException if vault not found', async () => {
-      mockEntityManager.findOne.mockResolvedValueOnce(null);
+      mockVaultRepository.findOne.mockResolvedValueOnce(null);
 
-      await expect(
-        service.withdraw('non-existent', { userId: 'user-1', amount: 100 }),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.withdrawFromVault('vault-1', 'user-1', 100)).rejects.toThrow(NotFoundException);
     });
 
-    it('should throw BadRequestException if insufficient liquidity', async () => {
-      mockEntityManager.findOne.mockResolvedValueOnce({ ...mockVault, liquidity: 50 });
+    it('should throw BadRequestException if insufficient balance', async () => {
+      mockVaultRepository.findOne.mockResolvedValueOnce(mockVault);
+      mockGetRawOne.mockResolvedValueOnce({ total: '50' });
 
-      await expect(
-        service.withdraw('vault-1', { userId: 'user-1', amount: 100 }),
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw NotFoundException if user deposit not found', async () => {
-      mockEntityManager.findOne
-        .mockResolvedValueOnce({ ...mockVault })
-        .mockResolvedValueOnce(null);
-
-      await expect(
-        service.withdraw('vault-1', { userId: 'user-2', amount: 100 }),
-      ).rejects.toThrow(NotFoundException);
-    });
-
-    it('should throw BadRequestException if insufficient user balance', async () => {
-      mockEntityManager.findOne
-        .mockResolvedValueOnce({ ...mockVault })
-        .mockResolvedValueOnce({ ...mockUserDeposit, balance: 50 });
-
-      await expect(
-        service.withdraw('vault-1', { userId: 'user-1', amount: 100 }),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.withdrawFromVault('vault-1', 'user-1', 100)).rejects.toThrow(BadRequestException);
     });
   });
 });
