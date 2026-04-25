@@ -28,6 +28,7 @@ import { RealtimeModule } from './realtime/realtime.module';
 import { SorobanModule } from './soroban/soroban.module';
 import { StellarModule } from './stellar/stellar.module';
 import { VerificationModule } from './verification/verification.module';
+import { SecretsModule } from './common/secrets/secrets.module';
 import {
   Achievement,
   CreditScore,
@@ -128,6 +129,7 @@ import { CreateSorobanEvents1700000000011 } from './database/migrations/17000000
     StellarModule,
     SorobanModule,
     PortfolioModule,
+    SecretsModule,
   ],
   controllers: [AppController],
   providers: [
