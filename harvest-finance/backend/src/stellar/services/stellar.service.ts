@@ -1,6 +1,8 @@
 import { Injectable, Logger, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as StellarSdk from 'stellar-sdk';
+import { retry } from '../../common/utils/retry';
+import { isRetryableStellarError } from '../utils/stellar-retry';
 import {
     EscrowCreateParams,
     EscrowResult,
@@ -22,6 +24,9 @@ export class StellarService {
     private readonly networkPassphrase: string;
     private readonly platformPublicKey: string;
     private readonly platformSecretKey: string;
+    private readonly retryMaxAttempts: number;
+    private readonly retryBaseDelayMs: number;
+    private readonly retryMaxDelayMs: number;
 
     constructor(private readonly configService: ConfigService) {
         const network = this.configService.get<string>('STELLAR_NETWORK', 'testnet');
@@ -38,6 +43,45 @@ export class StellarService {
 
         this.platformPublicKey = this.configService.getOrThrow<string>('STELLAR_PLATFORM_PUBLIC_KEY');
         this.platformSecretKey = this.configService.getOrThrow<string>('STELLAR_PLATFORM_SECRET_KEY');
+
+        this.retryMaxAttempts = Math.max(
+            1,
+            this.configService.get<number>('STELLAR_RETRY_MAX_ATTEMPTS', 3),
+        );
+        this.retryBaseDelayMs = Math.max(
+            0,
+            this.configService.get<number>('STELLAR_RETRY_BASE_DELAY_MS', 500),
+        );
+        this.retryMaxDelayMs = Math.max(
+            this.retryBaseDelayMs,
+            this.configService.get<number>('STELLAR_RETRY_MAX_DELAY_MS', 5000),
+        );
+    }
+
+    /**
+     * Submits a Stellar transaction with exponential-backoff retry on transient
+     * failures (5xx, 429, network errors). Deterministic rejections that
+     * carry Horizon `result_codes` are surfaced immediately — retrying those
+     * would only burn fees and sequence numbers.
+     */
+    private submitWithRetry(
+        transaction: StellarSdk.Transaction | StellarSdk.FeeBumpTransaction,
+        context: string,
+    ): Promise<StellarSdk.Horizon.HorizonApi.SubmitTransactionResponse> {
+        return retry(
+            () => this.server.submitTransaction(transaction),
+            {
+                maxAttempts: this.retryMaxAttempts,
+                baseDelayMs: this.retryBaseDelayMs,
+                maxDelayMs: this.retryMaxDelayMs,
+                isRetryable: isRetryableStellarError,
+                onRetry: (err, attempt, delayMs) => {
+                    this.logger.warn(
+                        `submitTransaction retry | context=${context} attempt=${attempt}/${this.retryMaxAttempts} delayMs=${delayMs} error=${(err as Error)?.message ?? 'unknown'}`,
+                    );
+                },
+            },
+        );
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
@@ -264,7 +308,7 @@ export class StellarService {
         }
 
         try {
-            const response = await this.server.submitTransaction(transaction);
+            const response = await this.submitWithRetry(transaction, 'releaseUpfrontPayment');
             this.logger.log(`Upfront payment released | txHash=${response.hash}`);
             return {
                 transactionHash: response.hash,
@@ -355,7 +399,7 @@ export class StellarService {
         }
 
         try {
-        const response = await this.server.submitTransaction(transaction);
+        const response = await this.submitWithRetry(transaction, 'createEscrow');
         const balanceId = this.extractBalanceId(response);
 
         this.logger.log(`Escrow created | balanceId=${balanceId} txHash=${response.hash}`);
@@ -424,7 +468,7 @@ export class StellarService {
         }
 
         try {
-        const response = await this.server.submitTransaction(transaction);
+        const response = await this.submitWithRetry(transaction, 'releasePayment');
         this.logger.log(`Payment released | txHash=${response.hash}`);
 
         return {
@@ -487,7 +531,7 @@ export class StellarService {
         }
 
         try {
-        const response = await this.server.submitTransaction(transaction);
+        const response = await this.submitWithRetry(transaction, 'refund');
         this.logger.log(`Refund processed | txHash=${response.hash}`);
 
         return {
@@ -553,7 +597,7 @@ export class StellarService {
         transaction.sign(sourceKeypair);
 
         try {
-        const response = await this.server.submitTransaction(transaction);
+        const response = await this.submitWithRetry(transaction, 'setupMultiSig');
         this.logger.log(`Multisig configured | txHash=${response.hash}`);
 
         return {
@@ -726,7 +770,7 @@ export class StellarService {
         feeBumpTx.sign(feeSourceKeypair);
 
         try {
-            const response = await this.server.submitTransaction(feeBumpTx);
+            const response = await this.submitWithRetry(feeBumpTx, 'submitWithFeeBump');
             this.logger.log(`Fee-bump transaction submitted | outerHash=${response.hash} innerHash=${innerTx.hash().toString('hex')}`);
 
             return {
