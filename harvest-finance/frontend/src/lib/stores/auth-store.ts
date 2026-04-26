@@ -23,6 +23,7 @@ interface AuthState {
 interface AuthActions {
   login: (email: string, password: string) => Promise<void>;
   signup: (name: string, email: string, password: string, role: UserRole) => Promise<void>;
+  stellarLogin: (publicKey: string) => Promise<void>;
   logout: () => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
   clearError: () => void;
@@ -125,6 +126,46 @@ export const useAuthStore = create<AuthStore>((set) => ({
     } finally {
       clearStorage();
       set({ user: null, token: null, isAuthenticated: false, error: null });
+    }
+  },
+
+  stellarLogin: async (publicKey) => {
+    set({ isLoading: true, error: null });
+    try {
+      // Step 1: Request challenge
+      const challengeResponse = await axios.post(`${API_BASE_URL}/auth/stellar/challenge`, {
+        public_key: publicKey,
+      });
+
+      const { transaction, network_passphrase } = challengeResponse.data;
+
+      // Step 2: Check if Freighter is available
+      if (!window.freighter) {
+        throw new Error('Freighter wallet is not installed');
+      }
+
+      // Step 3: Sign the transaction with Freighter
+      const signedTransaction = await window.freighter.signTransaction(transaction);
+
+      // Step 4: Verify the signed transaction and get tokens
+      const verifyResponse = await axios.post(`${API_BASE_URL}/auth/stellar/verify`, {
+        transaction: signedTransaction,
+      });
+
+      const { access_token, user } = verifyResponse.data;
+      const normalizedUser = { 
+        ...user, 
+        name: user.full_name,
+        role: normalizeRole(user.role) 
+      };
+      
+      saveToStorage(access_token, normalizedUser);
+      set({ user: normalizedUser, token: access_token, isAuthenticated: true, isLoading: false });
+    } catch (err: any) {
+      set({
+        isLoading: false,
+        error: err.response?.data?.message || err.message || 'Stellar authentication failed',
+      });
     }
   },
 

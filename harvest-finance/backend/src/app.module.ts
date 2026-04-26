@@ -28,6 +28,7 @@ import { RealtimeModule } from './realtime/realtime.module';
 import { SorobanModule } from './soroban/soroban.module';
 import { StellarModule } from './stellar/stellar.module';
 import { VerificationModule } from './verification/verification.module';
+import { YieldAnalyticsModule } from './yield-analytics/yield-analytics.module';
 import {
   Achievement,
   CreditScore,
@@ -43,6 +44,7 @@ import {
   VaultDeposit,
   Verification,
   Withdrawal,
+  YieldAnalytics,
 } from './database/entities';
 import { CropCycle } from './database/entities/crop-cycle.entity';
 import { InsurancePlan } from './database/entities/insurance-plan.entity';
@@ -56,6 +58,7 @@ import { CreateFarmVaults1700000000008 } from './database/migrations/17000000000
 import { CreateInsurance1700000000009 } from './database/migrations/1700000000009-CreateInsurance';
 import { AddInsuranceNotificationType1700000000010 } from './database/migrations/1700000000010-AddInsuranceNotificationType';
 import { CreateSorobanEvents1700000000011 } from './database/migrations/1700000000011-CreateSorobanEvents';
+import { CreateYieldAnalytics1700000000012 } from './database/migrations/1700000000012-CreateYieldAnalytics';
 
 @Module({
   imports: [
@@ -88,6 +91,7 @@ import { CreateSorobanEvents1700000000011 } from './database/migrations/17000000
           InsurancePlan,
           InsuranceSubscription,
           SorobanEvent,
+          YieldAnalytics,
         ],
         migrations: [
           CreateInitialSchema1700000000000,
@@ -99,6 +103,7 @@ import { CreateSorobanEvents1700000000011 } from './database/migrations/17000000
           CreateInsurance1700000000009,
           AddInsuranceNotificationType1700000000010,
           CreateSorobanEvents1700000000011,
+          CreateYieldAnalytics1700000000012,
         ],
         synchronize: false,
         migrationsRun: false,
@@ -128,6 +133,7 @@ import { CreateSorobanEvents1700000000011 } from './database/migrations/17000000
     StellarModule,
     SorobanModule,
     PortfolioModule,
+    YieldAnalyticsModule,
   ],
   controllers: [AppController],
   providers: [

@@ -7,6 +7,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { StellarStrategy } from './strategies/stellar.strategy';
 import { User } from '../database/entities/user.entity';
 
 @Module({
@@ -45,7 +46,7 @@ import { User } from '../database/entities/user.entity';
     ]),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
-  exports: [AuthService, JwtStrategy, PassportModule],
+  providers: [AuthService, JwtStrategy, StellarStrategy],
+  exports: [AuthService, JwtStrategy, StellarStrategy, PassportModule],
 })
 export class AuthModule {}
