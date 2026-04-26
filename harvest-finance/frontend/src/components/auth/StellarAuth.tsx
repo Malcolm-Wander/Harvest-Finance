@@ -7,6 +7,15 @@ import * as StellarSdk from 'stellar-sdk';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { stellarAuthSchema, type StellarAuthFormData } from '@/lib/validations/auth';
 
+type WalletProvider = 'freighter' | 'metamask' | 'albedo';
+
+interface WalletInfo {
+  name: string;
+  icon: string;
+  description: string;
+  installUrl: string;
+}
+
 interface StellarAuthProps {
   onSuccess?: () => void;
   onError?: (error: string) => void;
@@ -17,6 +26,29 @@ export function StellarAuth({ onSuccess, onError }: StellarAuthProps) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [walletConnected, setWalletConnected] = useState(false);
   const [userPublicKey, setUserPublicKey] = useState<string | null>(null);
+  const [selectedWallet, setSelectedWallet] = useState<WalletProvider | null>(null);
+  const [showWalletOptions, setShowWalletOptions] = useState(true);
+
+  const wallets: Record<WalletProvider, WalletInfo> = {
+    freighter: {
+      name: 'Freighter',
+      icon: '🚀',
+      description: 'Popular Stellar wallet with browser extension',
+      installUrl: 'https://www.freighter.app/'
+    },
+    metamask: {
+      name: 'MetaMask',
+      icon: '🦊',
+      description: 'Multi-chain wallet with Stellar support',
+      installUrl: 'https://metamask.io/'
+    },
+    albedo: {
+      name: 'Albedo',
+      icon: '🌟',
+      description: 'Web-based Stellar wallet',
+      installUrl: 'https://albedo.link/'
+    }
+  };
 
   const {
     register,
@@ -27,29 +59,81 @@ export function StellarAuth({ onSuccess, onError }: StellarAuthProps) {
     resolver: zodResolver(stellarAuthSchema),
   });
 
-  const connectFreighter = async () => {
+  const connectWallet = async (walletType: WalletProvider) => {
     setIsConnecting(true);
     clearError();
+    setSelectedWallet(walletType);
 
     try {
-      // Check if Freighter is installed
-      if (!window.freighter) {
-        throw new Error('Freighter wallet is not installed. Please install Freighter to continue.');
-      }
+      let publicKey: string;
 
-      // Connect to Freighter and get public key
-      const publicKey = await window.freighter.getPublicKey();
+      switch (walletType) {
+        case 'freighter':
+          if (!window.freighter) {
+            throw new Error('Freighter wallet is not installed. Please install Freighter to continue.');
+          }
+          publicKey = await window.freighter.getPublicKey();
+          break;
+
+        case 'metamask':
+          if (!window.ethereum) {
+            throw new Error('MetaMask is not installed. Please install MetaMask to continue.');
+          }
+          // Check if MetaMask has Stellar support
+          if (!window.ethereum.isStellarSupported) {
+            throw new Error('MetaMask Stellar support is not enabled. Please enable Stellar in MetaMask settings.');
+          }
+          // Request Stellar account access
+          const accounts = await window.ethereum.request({
+            method: 'stellar_requestAccounts'
+          });
+          publicKey = accounts[0];
+          break;
+
+        case 'albedo':
+          // Albedo is web-based, we'll use popup authentication
+          publicKey = await new Promise((resolve, reject) => {
+            const popup = window.open('https://albedo.link/?action=sign', 'albedo', 'width=400,height=600');
+            
+            const messageHandler = (event: MessageEvent) => {
+              if (event.origin === 'https://albedo.link') {
+                if (event.data.publicKey) {
+                  resolve(event.data.publicKey);
+                } else if (event.data.error) {
+                  reject(new Error(event.data.error));
+                }
+                popup?.close();
+                window.removeEventListener('message', messageHandler);
+              }
+            };
+            
+            window.addEventListener('message', messageHandler);
+            
+            // Timeout after 5 minutes
+            setTimeout(() => {
+              popup?.close();
+              window.removeEventListener('message', messageHandler);
+              reject(new Error('Albedo connection timed out'));
+            }, 300000);
+          });
+          break;
+
+        default:
+          throw new Error('Unsupported wallet type');
+      }
       
       if (!publicKey) {
-        throw new Error('Failed to connect to Freighter wallet');
+        throw new Error(`Failed to connect to ${wallets[walletType].name} wallet`);
       }
 
       setUserPublicKey(publicKey);
       setValue('public_key', publicKey);
       setWalletConnected(true);
+      setShowWalletOptions(false);
     } catch (err: any) {
-      const errorMessage = err.message || 'Failed to connect to wallet';
+      const errorMessage = err.message || `Failed to connect to ${wallets[walletType].name} wallet`;
       onError?.(errorMessage);
+      setSelectedWallet(null);
     } finally {
       setIsConnecting(false);
     }
@@ -57,7 +141,7 @@ export function StellarAuth({ onSuccess, onError }: StellarAuthProps) {
 
   const onSubmit = async (data: StellarAuthFormData) => {
     try {
-      await stellarLogin(data.public_key);
+      await stellarLogin(data.public_key, selectedWallet || 'freighter');
       onSuccess?.();
     } catch (err: any) {
       // Error is handled in the store
@@ -68,6 +152,8 @@ export function StellarAuth({ onSuccess, onError }: StellarAuthProps) {
     setUserPublicKey(null);
     setValue('public_key', '');
     setWalletConnected(false);
+    setSelectedWallet(null);
+    setShowWalletOptions(true);
   };
 
   return (
@@ -96,57 +182,76 @@ export function StellarAuth({ onSuccess, onError }: StellarAuthProps) {
               Connect with Stellar
             </h3>
             <p className="text-sm text-slate-600 dark:text-gray-400 mb-6">
-              Sign in securely using your Stellar wallet (Freighter, MetaMask, or other compatible wallets)
+              Sign in securely using your Stellar wallet
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={connectFreighter}
-            disabled={isConnecting}
-            aria-busy={isConnecting}
-            className="btn-primary w-full flex items-center justify-center gap-3"
-          >
-            {isConnecting ? (
-              <>
-                <svg
-                  className="h-4 w-4 animate-spin"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
+          {showWalletOptions && (
+            <div className="space-y-3">
+              {Object.entries(wallets).map(([key, wallet]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => connectWallet(key as WalletProvider)}
+                  disabled={isConnecting}
+                  aria-busy={isConnecting && selectedWallet === key}
+                  className="btn-primary w-full flex items-center justify-center gap-3"
                 >
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-                Connecting...
-              </>
-            ) : (
-              <>
-                <svg
-                  className="h-5 w-5"
-                  fill="currentColor"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
-                Connect Freighter Wallet
-              </>
-            )}
-          </button>
+                  {isConnecting && selectedWallet === key ? (
+                    <>
+                      <svg
+                        className="h-4 w-4 animate-spin"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                      >
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      Connecting to {wallet.name}...
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-xl">{wallet.icon}</span>
+                      Connect {wallet.name}
+                    </>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
 
-          <div className="mt-4 text-xs text-slate-500 dark:text-gray-500">
+          <div className="mt-6 text-xs text-slate-500 dark:text-gray-500">
             <p>Don't have a Stellar wallet?</p>
-            <a
-              href="https://www.freighter.app/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-            >
-              Download Freighter
-            </a>
+            <div className="flex gap-2 justify-center mt-2">
+              <a
+                href="https://www.freighter.app/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+              >
+                Freighter
+              </a>
+              <span>•</span>
+              <a
+                href="https://metamask.io/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+              >
+                MetaMask
+              </a>
+              <span>•</span>
+              <a
+                href="https://albedo.link/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+              >
+                Albedo
+              </a>
+            </div>
           </div>
         </div>
       ) : (
@@ -234,13 +339,17 @@ export function StellarAuth({ onSuccess, onError }: StellarAuthProps) {
   );
 }
 
-// Type declaration for Freighter API
+// Type declarations for wallet APIs
 declare global {
   interface Window {
     freighter?: {
       getPublicKey: () => Promise<string>;
       signTransaction: (xdr: string) => Promise<string>;
       isConnected: () => Promise<boolean>;
+    };
+    ethereum?: {
+      isStellarSupported?: boolean;
+      request: (args: { method: string; params?: any[] }) => Promise<any>;
     };
   }
 }
