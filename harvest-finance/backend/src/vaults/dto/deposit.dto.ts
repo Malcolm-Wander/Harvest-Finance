@@ -27,4 +27,12 @@ export class DepositDto {
   @Max(1000000, { message: 'Deposit amount cannot exceed 1,000,000' })
   @IsNotEmpty({ message: 'Amount is required' })
   amount: number;
+  @ApiProperty({
+    example: 'tx_123456789',
+    description: 'Unique key to prevent duplicate deposits (optional)',
+    required: false,
+  })
+  @IsString()
+  @IsNotEmpty()
+  idempotencyKey?: string;
 }

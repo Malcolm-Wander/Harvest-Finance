@@ -6,9 +6,14 @@ import { Reward } from '../database/entities/reward.entity';
 import { RewardsController } from './rewards.controller';
 import { RewardsService } from './rewards.service';
 import { AuthModule } from '../auth/auth.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Deposit, Vault, Reward]), AuthModule],
+  imports: [
+    TypeOrmModule.forFeature([Deposit, Vault, Reward]),
+    AuthModule,
+    NotificationsModule,
+  ],
   controllers: [RewardsController],
   providers: [RewardsService],
   exports: [RewardsService],

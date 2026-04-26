@@ -6,6 +6,8 @@ import { Vault } from '../database/entities/vault.entity';
 import { Reward, RewardStatus } from '../database/entities/reward.entity';
 import { calculateDepositReward } from './utils/reward-calculator';
 import { UserRewardsResponseDto, VaultRewardSummaryDto, ClaimRewardsResponseDto } from './dto/reward-response.dto';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '../database/entities/notification.entity';
 
 @Injectable()
 export class RewardsService {
@@ -13,6 +15,7 @@ export class RewardsService {
     @InjectRepository(Deposit) private depositRepo: Repository<Deposit>,
     @InjectRepository(Vault) private vaultRepo: Repository<Vault>,
     @InjectRepository(Reward) private rewardRepo: Repository<Reward>,
+    private notificationsService: NotificationsService,
   ) {}
 
   async getUserRewards(userId: string): Promise<UserRewardsResponseDto> {
@@ -79,6 +82,14 @@ export class RewardsService {
       lastCalculatedAt: now,
     });
     await this.rewardRepo.save(claimRecord);
+
+    // Trigger notification for user
+    await this.notificationsService.create({
+      userId,
+      title: 'Rewards Claimed',
+      message: `You have successfully claimed ${claimedAmount.toFixed(8)} in rewards from ${vaultId ? 'vault ' + vaultId : 'all vaults'}.`,
+      type: NotificationType.REWARD,
+    });
 
     return {
       userId,

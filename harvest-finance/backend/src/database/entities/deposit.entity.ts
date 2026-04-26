@@ -32,6 +32,7 @@ export enum DepositStatus {
 @Index('idx_deposits_user', ['userId'])
 @Index('idx_deposits_vault', ['vaultId'])
 @Index('idx_deposits_status', ['status'])
+@Index('idx_deposits_idempotency', ['idempotencyKey'], { unique: true })
 export class Deposit {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -71,6 +72,9 @@ export class Deposit {
 
   @Column({ type: 'text', nullable: true })
   notes: string | null;
+
+  @Column({ type: 'text', name: 'idempotency_key', nullable: true })
+  idempotencyKey: string | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
