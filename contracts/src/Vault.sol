@@ -13,11 +13,17 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
  */
 contract Vault is ERC20, Ownable, ReentrancyGuard {
     IERC20 public asset;
-    
+
     uint256 public totalAssets_;
-    
+
+    /// @notice Maximum total assets the vault is allowed to hold via `deposit`.
+    /// @dev Initialized to `type(uint256).max` (unlimited) to preserve the
+    ///      pre-cap deployment behaviour. Update via `setDepositCap`.
+    uint256 public depositCap;
+
     event Deposit(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
     event Withdraw(address indexed caller, address indexed receiver, uint256 assets, uint256 shares);
+    event DepositCapUpdated(uint256 oldCap, uint256 newCap);
 
     constructor(
         IERC20 _asset,
@@ -25,6 +31,7 @@ contract Vault is ERC20, Ownable, ReentrancyGuard {
         string memory _symbol
     ) ERC20(_name, _symbol) {
         asset = _asset;
+        depositCap = type(uint256).max;
     }
 
     /**
@@ -36,6 +43,7 @@ contract Vault is ERC20, Ownable, ReentrancyGuard {
     function deposit(uint256 assets, address receiver) external nonReentrant returns (uint256 shares) {
         require(receiver != address(0), "Invalid receiver");
         require(assets > 0, "Assets must be greater than 0");
+        require(totalAssets_ + assets <= depositCap, "Vault: deposit cap exceeded");
 
         shares = convertToShares(assets);
         
@@ -168,6 +176,29 @@ contract Vault is ERC20, Ownable, ReentrancyGuard {
      */
     function previewRedeem(uint256 shares) external view returns (uint256) {
         return convertToAssets(shares);
+    }
+
+    /**
+     * @dev Update the maximum total assets accepted by `deposit`. Only owner.
+     *      Setting `newCap` below current `totalAssets_` does NOT force a
+     *      withdrawal of existing deposits — it only blocks future inflows
+     *      until totalAssets shrinks (via withdraw/redeem) below the new cap.
+     */
+    function setDepositCap(uint256 newCap) external onlyOwner {
+        uint256 oldCap = depositCap;
+        depositCap = newCap;
+        emit DepositCapUpdated(oldCap, newCap);
+    }
+
+    /**
+     * @dev Remaining capacity available to new deposits before hitting the cap.
+     *      Returns 0 if `totalAssets_` already meets or exceeds `depositCap`.
+     */
+    function maxDeposit() external view returns (uint256) {
+        if (totalAssets_ >= depositCap) {
+            return 0;
+        }
+        return depositCap - totalAssets_;
     }
 
     /**
