@@ -1,27 +1,61 @@
 'use client';
 
-import React from "react";
-import { VaultOverview } from "@/components/dashboard/VaultOverview";
-import { TrendingUp, Wallet, ArrowRight, Activity } from "lucide-react";
-import { Card, CardBody } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
-import {
-    AreaChart,
-    Area,
-    XAxis,
-    YAxis,
-    Tooltip,
-    ResponsiveContainer,
-} from "recharts";
+import { useEffect, useMemo, useState } from 'react';
+import { 
+  Bot, 
+  Database, 
+  Leaf, 
+  RefreshCcw, 
+  TrendingUp, 
+  Wallet 
+} from 'lucide-react';
+import { 
+  Badge, 
+  Button, 
+  Card, 
+  CardBody,
+  MetricCardSkeleton,
+} from '@/components/ui';
 
-const chartData = [
-    { name: "Mon", value: 32000 },
-    { name: "Tue", value: 34000 },
-    { name: "Wed", value: 33000 },
-    { name: "Thu", value: 36000 },
-    { name: "Fri", value: 42000 },
-    { name: "Sat", value: 41000 },
-    { name: "Sun", value: 45231 },
+import { AIAssistantChat } from '@/components/ai-assistant';
+import { 
+  VaultOverview, 
+  VaultActivityFeed, 
+  ConnectivityBanner, 
+  CropRecommendationPanel, 
+  FarmActivityMap, 
+  WeatherWidget, 
+  CropInsurancePanel 
+} from '@/components/dashboard';
+
+import { 
+  MilestoneNotification, 
+  SeasonalTipsList 
+} from '@/components/seasonal-tips';
+
+import { useAIAssistantStore } from '@/hooks/useAIAssistant';
+import { useAuthStore } from '@/lib/stores/auth-store';
+import { useSync } from '@/hooks/useSync';
+import { 
+  loadDashboardSnapshot, 
+  saveDashboardSnapshot 
+} from '@/lib/offline-support';
+
+const defaultTransactions = [
+  {
+    id: "tx-1",
+    type: "Deposit",
+    amount: 250,
+    status: "Synced",
+    createdAt: "2026-03-29T07:30:00.000Z",
+  },
+  {
+    id: "tx-2",
+    type: "Reward",
+    amount: 38,
+    status: "Completed",
+    createdAt: "2026-03-28T12:15:00.000Z",
+  },
 ];
 
 const positions = [
@@ -36,18 +70,21 @@ const positions = [
     { vault: "ETH LST LP", tvl: "$7,231", apy: "7.91%", earnings: "$15.32" },
 ];
 
-export default function DashboardPage() {
-    return (
-        <div className="space-y-8 pb-10">
-            {/* Dashboard Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
-                        Dashboard
-                    </h1>
-                    <p className="text-gray-500 mt-1">
-                        Welcome back. Here is an overview of your portfolio.
-                    </p>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {isSyncing
+          ? Array.from({ length: 4 }).map((_, i) => <MetricCardSkeleton key={i} />)
+          : quickActions.map((card) => {
+          const Icon = card.icon;
+          return (
+            <Card key={card.title} variant="default" className="hover:shadow-md transition-shadow">
+              <CardBody className="space-y-4 p-4 md:p-5">
+                <div className="flex items-center justify-between">
+                <div className="flex h-10 w-10 md:h-11 md:w-11 items-center justify-center rounded-full bg-harvest-green-50 dark:bg-harvest-green-900/40 text-harvest-green-700 dark:text-harvest-green-300">
+  <Icon className="h-4 w-4 md:h-5 md:w-5" />
+</div>
+                  <Badge variant="success" size="sm" isPill>
+                    Cached
+                  </Badge>
                 </div>
                 <div className="flex items-center">
                     <Button
