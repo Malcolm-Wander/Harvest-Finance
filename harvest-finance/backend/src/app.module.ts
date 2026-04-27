@@ -23,6 +23,7 @@ import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
 import { LoggerMiddleware } from './logger/logger.middleware';
 import { LoggerModule } from './logger/logger.module';
+import { MultiChainModule } from './multi-chain/multi-chain.module';
 import { OrdersModule } from './orders/orders.module';
 import { PortfolioModule } from './portfolio/portfolio.module';
 import { RealtimeModule } from './realtime/realtime.module';

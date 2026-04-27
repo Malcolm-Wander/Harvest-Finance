@@ -78,6 +78,7 @@ async function bootstrap() {
     .addTag('verifications', 'Delivery verification endpoints')
     .addTag('deliveries', 'Delivery management endpoints')
     .addTag('orders', 'Order management endpoints')
+    .addTag('Multi-chain', 'Cross-chain yield aggregation across registered chain adapters')
     .addTag('health', 'Health check endpoints')
     .build();
   const document = SwaggerModule.createDocument(app, config);
