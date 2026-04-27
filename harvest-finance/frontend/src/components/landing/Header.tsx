@@ -23,8 +23,11 @@ export const Header = () => {
             <Link href="#benefits" className="text-sm font-medium text-zinc-600 hover:text-harvest-green-600 dark:text-zinc-400 dark:hover:text-harvest-green-400 transition-colors">
               {t('landing.header.benefits')}
             </Link>
-            <Link href="#global" className="text-sm font-medium text-zinc-600 hover:text-harvest-green-600 dark:text-zinc-400 dark:hover:text-harvest-green-400 transition-colors">
-              {t('landing.header.global')}
+            <Link href="/community" className="text-sm font-medium text-zinc-600 hover:text-harvest-green-600 dark:text-zinc-400 dark:hover:text-harvest-green-400 transition-colors">
+              Community
+            </Link>
+            <Link href="/marketplace" className="text-sm font-medium text-zinc-600 hover:text-harvest-green-600 dark:text-zinc-400 dark:hover:text-harvest-green-400 transition-colors">
+              Marketplace
             </Link>
           </nav>
 

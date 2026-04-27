@@ -49,6 +49,14 @@ import {
   Withdrawal,
   YieldAnalytics,
 } from './database/entities';
+import { CommunityPost } from './database/entities/community-post.entity';
+import { CommunityComment } from './database/entities/community-comment.entity';
+import { PostReaction } from './database/entities/post-reaction.entity';
+import { CommunityGroup } from './database/entities/community-group.entity';
+import { GroupMembership } from './database/entities/group-membership.entity';
+import { CoopListing } from './database/entities/coop-listing.entity';
+import { CoopOrder } from './database/entities/coop-order.entity';
+import { CoopReview } from './database/entities/coop-review.entity';
 import { CropCycle } from './database/entities/crop-cycle.entity';
 import { InsurancePlan } from './database/entities/insurance-plan.entity';
 import { InsuranceSubscription } from './database/entities/insurance-subscription.entity';
