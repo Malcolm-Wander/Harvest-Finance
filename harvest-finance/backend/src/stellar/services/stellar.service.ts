@@ -2,6 +2,7 @@ import { Injectable, Logger, BadRequestException, InternalServerErrorException, 
 import { ConfigService } from '@nestjs/config';
 import { SecretsService } from '../../common/secrets/secrets.service';
 import * as StellarSdk from 'stellar-sdk';
+import { CustomLoggerService } from '../../logger/custom-logger.service';
 import {
     EscrowCreateParams,
     EscrowResult,
@@ -820,21 +821,52 @@ export class StellarService implements OnModuleInit {
 
 
     private handleStellarError(err: any, context: string): never {
+        const status = err?.response?.status;
+
         if (err?.response?.data?.extras?.result_codes) {
-        const codes = err.response.data.extras.result_codes;
-        this.logger.error(`Stellar error in ${context}`, JSON.stringify(codes));
-        throw new BadRequestException(`Stellar transaction failed: ${JSON.stringify(codes)}`);
+            const resultCodes = err.response.data.extras.result_codes;
+            this.structuredLogger?.errorEvent(
+                'stellar_tx_failed',
+                {
+                    context,
+                    status,
+                    resultCodes,
+                    message: err?.message ?? 'unknown',
+                },
+                StellarService.name,
+            );
+            this.logger.error(
+                `Stellar error in ${context}`,
+                JSON.stringify(resultCodes),
+            );
+            throw new BadRequestException(
+                `Stellar transaction failed: ${JSON.stringify(resultCodes)}`,
+            );
         }
 
-        if (err?.response?.status === 404) {
-        throw new BadRequestException(`Stellar resource not found (context: ${context})`);
+        if (status === 404) {
+            throw new BadRequestException(
+                `Stellar resource not found (context: ${context})`,
+            );
         }
 
         if (err instanceof BadRequestException) {
-        throw err;
+            throw err;
         }
 
+        this.structuredLogger?.errorEvent(
+            'stellar_tx_failed',
+            {
+                context,
+                status,
+                message: err?.message ?? 'unknown',
+                kind: 'unexpected',
+            },
+            StellarService.name,
+        );
         this.logger.error(`Unexpected Stellar error in ${context}`, err);
-        throw new InternalServerErrorException(`Stellar network error in ${context}: ${err?.message ?? 'unknown'}`);
+        throw new InternalServerErrorException(
+            `Stellar network error in ${context}: ${err?.message ?? 'unknown'}`,
+        );
     }
 }
