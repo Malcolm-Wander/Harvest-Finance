@@ -2,6 +2,7 @@
 pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
+import "forge-std/StdInvariant.sol";
 import "../src/Vault.sol";
 import "../src/MockERC20.sol";
 
@@ -37,7 +38,7 @@ contract VaultInvariantTest is Test {
         token.approve(address(vault), type(uint256).max);
     }
 
-    // ============== INVARIANT: ASSET CONSERVATION ==============
+    address[] public actors;
 
     /**
      * @dev Invariant: sum of user asset values should not exceed vault assets
@@ -79,7 +80,8 @@ contract VaultInvariantTest is Test {
         assertEq(totalSupply, sumOfBalances, "Total supply should equal sum of balances");
     }
 
-    // ============== INVARIANT: EXCHANGE RATE MONOTONICITY ==============
+    function deposit(uint256 seed, uint256 assets) external {
+        address actor = _actor(seed);
 
     /**
      * @dev Invariant: exchange rate should never decrease after deposits
@@ -100,8 +102,13 @@ contract VaultInvariantTest is Test {
         assertGe(vault.totalAssets(), 2e20, "Total assets should at least equal deposits");
     }
 
-    // ============== INVARIANT: ROUNDING SAFETY ==============
+    function withdraw(uint256 seed, uint256 assets) external {
+        address actor = _actor(seed);
+        assets = bound(assets, 1, 1e24);
 
+        vm.startPrank(actor);
+        try vault.withdraw(assets, actor, actor) { } catch { }
+        vm.stopPrank();
     /**
      * @dev Invariant: small amounts should not cause rounding exploits
      */
@@ -118,7 +125,9 @@ contract VaultInvariantTest is Test {
         assertLe(vault.totalAssets() - userAssets, 1, "Rounding error should be minimal");
     }
 
-    // ============== INVARIANT: NO DOUBLE SPENDING ==============
+    function redeem(uint256 seed, uint256 shares) external {
+        address actor = _actor(seed);
+        shares = bound(shares, 1, 1e24);
 
     /**
      * @dev Invariant: cannot withdraw more than balance
@@ -137,8 +146,12 @@ contract VaultInvariantTest is Test {
         uint256 remainingShares = vault.balanceOf(user1);
         assertEq(remainingShares, userBalance - shares, "User cannot double spend");
     }
+}
 
-    // ============== INVARIANT: TOTAL ASSETS TRACKING ==============
+contract VaultInvariantTest is StdInvariant, Test {
+    Vault public vault;
+    MockERC20 public token;
+    VaultHandler public handler;
 
     /**
      * @dev Invariant: vault tracking of total assets must match deposits - withdrawals
@@ -162,7 +175,10 @@ contract VaultInvariantTest is Test {
         assertEq(vault.totalAssets(), expectedAssets);
     }
 
-    // ============== INVARIANT: CONVERSION REVERSIBILITY ==============
+        // Fund actors with ample tokens
+        token.mint(user1, 1e27);
+        token.mint(user2, 1e27);
+        token.mint(user3, 1e27);
 
     /**
      * @dev Invariant: convertToAssets(convertToShares(x)) ≈ x
@@ -179,10 +195,13 @@ contract VaultInvariantTest is Test {
         assertApproxEqAbs(originalAssets, assetsBack, 2, "Conversions should be reversible");
     }
 
-    // ============== INVARIANT: ZERO BALANCE AFTER FULL WITHDRAWAL ==============
+        // Drive random sequences through the handler only
+        targetContract(address(handler));
+    }
 
     /**
-     * @dev Invariant: user shares should be zero after withdrawing all
+     * @dev Invariant: Vault's tracked assets should never exceed actual token balance.
+     * (Allows for "donations" sent directly to the vault, which increase balance without updating accounting.)
      */
     function test_ZeroBalanceAfterFullWithdrawal() public {
         vm.prank(user1);
@@ -195,10 +214,11 @@ contract VaultInvariantTest is Test {
         assertEq(vault.totalSupply(), 0, "Total supply should be zero when empty");
     }
 
-    // ============== MULTI-OPERATION INVARIANT TESTS ==============
-
     /**
-     * @dev Invariant: multiple deposits and withdrawals maintain integrity
+     * @dev Invariant: Total shares represent claims on assets; converting all shares should
+     * never exceed totalAssets (modulo small rounding).
+     *
+     * Example: convertToAssets(totalSupply) <= totalAssets + 1
      */
     function test_MultipleOperations() public {
         // User 1: deposit -> withdraw -> redeem pattern
@@ -223,7 +243,8 @@ contract VaultInvariantTest is Test {
     }
 
     /**
-     * @dev Invariant: three-way operations maintain consistency
+     * @dev Invariant: conversion sanity — converting assets->shares->assets should not increase value.
+     * This helps prevent a "free money" rounding cycle.
      */
     function test_ThreeUserOperations() public {
         // User 1: small deposit
