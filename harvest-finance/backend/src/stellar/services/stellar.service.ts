@@ -277,7 +277,7 @@ export class StellarService implements OnModuleInit {
         }
 
         try {
-            const response = await this.server.submitTransaction(transaction);
+            const response = await this.submitWithRetry(transaction, 'releaseUpfrontPayment');
             this.logger.log(`Upfront payment released | txHash=${response.hash}`);
             return {
                 transactionHash: response.hash,
@@ -368,7 +368,7 @@ export class StellarService implements OnModuleInit {
         }
 
         try {
-        const response = await this.server.submitTransaction(transaction);
+        const response = await this.submitWithRetry(transaction, 'createEscrow');
         const balanceId = this.extractBalanceId(response);
 
         this.logger.log(`Escrow created | balanceId=${balanceId} txHash=${response.hash}`);
@@ -437,7 +437,7 @@ export class StellarService implements OnModuleInit {
         }
 
         try {
-        const response = await this.server.submitTransaction(transaction);
+        const response = await this.submitWithRetry(transaction, 'releasePayment');
         this.logger.log(`Payment released | txHash=${response.hash}`);
 
         return {
@@ -500,7 +500,7 @@ export class StellarService implements OnModuleInit {
         }
 
         try {
-        const response = await this.server.submitTransaction(transaction);
+        const response = await this.submitWithRetry(transaction, 'refund');
         this.logger.log(`Refund processed | txHash=${response.hash}`);
 
         return {
@@ -566,7 +566,7 @@ export class StellarService implements OnModuleInit {
         transaction.sign(sourceKeypair);
 
         try {
-        const response = await this.server.submitTransaction(transaction);
+        const response = await this.submitWithRetry(transaction, 'setupMultiSig');
         this.logger.log(`Multisig configured | txHash=${response.hash}`);
 
         return {
@@ -739,7 +739,7 @@ export class StellarService implements OnModuleInit {
         feeBumpTx.sign(feeSourceKeypair);
 
         try {
-            const response = await this.server.submitTransaction(feeBumpTx);
+            const response = await this.submitWithRetry(feeBumpTx, 'submitWithFeeBump');
             this.logger.log(`Fee-bump transaction submitted | outerHash=${response.hash} innerHash=${innerTx.hash().toString('hex')}`);
 
             return {
