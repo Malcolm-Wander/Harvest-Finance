@@ -4,6 +4,7 @@ pragma solidity 0.8.19;
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "./libraries/TokenValidation.sol";
 
 /**
  * @title Controller
@@ -37,7 +38,8 @@ contract Controller is Initializable, AccessControlUpgradeable, UUPSUpgradeable 
      * @param vault Address of the vault.
      */
     function addVault(address vault) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(vault != address(0), "Controller: zero address");
+        TokenValidation.validateNonZero(vault);
+        TokenValidation.validateContractExists(vault);
         vaults[vault] = true;
         emit VaultAdded(vault);
     }
@@ -49,7 +51,8 @@ contract Controller is Initializable, AccessControlUpgradeable, UUPSUpgradeable 
      */
     function setStrategy(address vault, address strategy) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(vaults[vault], "Controller: vault not added");
-        require(strategy != address(0), "Controller: zero strategy");
+        TokenValidation.validateNonZero(strategy);
+        TokenValidation.validateContractExists(strategy);
         strategies[vault] = strategy;
         emit StrategySet(vault, strategy);
     }

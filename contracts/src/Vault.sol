@@ -9,6 +9,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "./interfaces/IVault.sol";
 import "./libraries/VaultLib.sol";
+import "./libraries/TokenValidation.sol";
 
 /**
  * @title Vault
@@ -59,8 +60,9 @@ contract Vault is Initializable, IVault, ERC20Upgradeable, AccessControlUpgradea
         string memory _symbol,
         address admin
     ) public initializer {
-        require(address(_asset) != address(0), "Vault: zero asset");
-        require(admin != address(0),            "Vault: zero admin");
+        TokenValidation.validateNonZero(address(_asset));
+        TokenValidation.validateNonZero(admin);
+        TokenValidation.validateContractExists(address(_asset));
 
         __ERC20_init(_name, _symbol);
         __AccessControl_init();
@@ -217,8 +219,8 @@ contract Vault is Initializable, IVault, ERC20Upgradeable, AccessControlUpgradea
     }
 
     function emergencyWithdraw(address token, address recipient) external onlyRole(ADMIN_ROLE) {
-        require(token != address(0), "Vault: zero token");
-        require(recipient != address(0), "Vault: zero recipient");
+        TokenValidation.validateNonZero(token);
+        TokenValidation.validateNonZero(recipient);
         require(token != address(asset), "Vault: cannot rescue vault asset");
 
         uint256 balance = IERC20Upgradeable(token).balanceOf(address(this));
