@@ -174,6 +174,7 @@ contract Vault is ERC20, Ownable, ReentrancyGuard {
      * @dev Emergency function to rescue tokens
      */
     function emergencyWithdraw(address token) external onlyOwner {
+        require(token != address(asset), "Cannot rescue vault asset");
         IERC20 tokenToWithdraw = IERC20(token);
         uint256 balance = tokenToWithdraw.balanceOf(address(this));
         require(tokenToWithdraw.transfer(msg.sender, balance), "Transfer failed");

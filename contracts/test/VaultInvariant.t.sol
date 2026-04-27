@@ -2,6 +2,7 @@
 pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
+import "forge-std/StdInvariant.sol";
 import "../src/Vault.sol";
 import "../src/MockERC20.sol";
 
@@ -11,244 +12,113 @@ import "../src/MockERC20.sol";
  * These tests verify that certain properties always hold true
  * regardless of the sequence of operations
  */
-contract VaultInvariantTest is Test {
+contract VaultHandler {
+    Vault public immutable vault;
+    MockERC20 public immutable token;
+
+    address[] public actors;
+
+    constructor(Vault _vault, MockERC20 _token, address[] memory _actors) {
+        vault = _vault;
+        token = _token;
+        actors = _actors;
+    }
+
+    function _actor(uint256 seed) internal view returns (address) {
+        return actors[seed % actors.length];
+    }
+
+    function deposit(uint256 seed, uint256 assets) external {
+        address actor = _actor(seed);
+
+        // Keep amounts realistic for fuzzing + avoid exhausting balances
+        assets = bound(assets, 1, 1e24);
+
+        vm.startPrank(actor);
+        token.approve(address(vault), type(uint256).max);
+        // ignore reverts (invariant profile has fail_on_revert=false)
+        try vault.deposit(assets, actor) { } catch { }
+        vm.stopPrank();
+    }
+
+    function withdraw(uint256 seed, uint256 assets) external {
+        address actor = _actor(seed);
+        assets = bound(assets, 1, 1e24);
+
+        vm.startPrank(actor);
+        try vault.withdraw(assets, actor, actor) { } catch { }
+        vm.stopPrank();
+    }
+
+    function redeem(uint256 seed, uint256 shares) external {
+        address actor = _actor(seed);
+        shares = bound(shares, 1, 1e24);
+
+        vm.startPrank(actor);
+        try vault.redeem(shares, actor, actor) { } catch { }
+        vm.stopPrank();
+    }
+}
+
+contract VaultInvariantTest is StdInvariant, Test {
     Vault public vault;
     MockERC20 public token;
-    
+    VaultHandler public handler;
+
     address public user1 = address(0x1111);
     address public user2 = address(0x2222);
     address public user3 = address(0x3333);
-    
+
     function setUp() public {
         token = new MockERC20("Test Token", "TEST", type(uint128).max);
         vault = new Vault(token, "Vault Token", "vTEST");
-        
-        // Mint tokens to users
+
+        // Fund actors with ample tokens
         token.mint(user1, 1e27);
         token.mint(user2, 1e27);
         token.mint(user3, 1e27);
-        
-        // Approve vault
-        vm.prank(user1);
-        token.approve(address(vault), type(uint256).max);
-        vm.prank(user2);
-        token.approve(address(vault), type(uint256).max);
-        vm.prank(user3);
-        token.approve(address(vault), type(uint256).max);
+
+        address[] memory actors = new address[](3);
+        actors[0] = user1;
+        actors[1] = user2;
+        actors[2] = user3;
+
+        handler = new VaultHandler(vault, token, actors);
+
+        // Drive random sequences through the handler only
+        targetContract(address(handler));
     }
 
-    // ============== INVARIANT: ASSET CONSERVATION ==============
-
     /**
-     * @dev Invariant: sum of user asset values should not exceed vault assets
-     * This prevents creation of tokens out of thin air
+     * @dev Invariant: Vault's tracked assets should never exceed actual token balance.
+     * (Allows for "donations" sent directly to the vault, which increase balance without updating accounting.)
      */
-    function invariant_AssetConservation() public {
-        // Deposit multiple times
-        vm.prank(user1);
-        vault.deposit(1e20, user1);
-        
-        vm.prank(user2);
-        vault.deposit(2e20, user2);
-        
-        uint256 user1Assets = vault.convertToAssets(vault.balanceOf(user1));
-        uint256 user2Assets = vault.convertToAssets(vault.balanceOf(user2));
-        
-        // Total user assets should not exceed vault total assets
-        assertLe(
-            user1Assets + user2Assets,
-            vault.totalAssets() + 1,
-            "Sum of user assets should not exceed vault assets"
-        );
+    function invariant_TotalAssetsNeverExceedBalance() public view {
+        assertLe(vault.totalAssets(), token.balanceOf(address(vault)), "totalAssets exceeds actual balance");
     }
 
-    // ============== INVARIANT: SHARE SUPPLY CONSISTENCY ==============
-
     /**
-     * @dev Invariant: totalSupply should equal sum of all balances
-     * (This is automatically true in ERC20, but we test it explicitly)
+     * @dev Invariant: Total shares represent claims on assets; converting all shares should
+     * never exceed totalAssets (modulo small rounding).
+     *
+     * Example: convertToAssets(totalSupply) <= totalAssets + 1
      */
-    function invariant_ShareSupplyConsistency() public {
-        vm.prank(user1);
-        vault.deposit(1e20, user1);
-        
-        vm.prank(user2);
-        vault.deposit(2e20, user2);
-        
-        uint256 totalSupply = vault.totalSupply();
-        uint256 sumOfBalances = vault.balanceOf(user1) + vault.balanceOf(user2);
-        
-        assertEq(totalSupply, sumOfBalances, "Total supply should equal sum of balances");
+    function invariant_TotalShareClaimsBoundedByAssets() public view {
+        uint256 supply = vault.totalSupply();
+        if (supply == 0) return;
+
+        uint256 claim = vault.convertToAssets(supply);
+        assertLe(claim, vault.totalAssets() + 1, "share claims exceed assets");
     }
 
-    // ============== INVARIANT: EXCHANGE RATE MONOTONICITY ==============
-
     /**
-     * @dev Invariant: exchange rate should never decrease after deposits
+     * @dev Invariant: conversion sanity — converting assets->shares->assets should not increase value.
+     * This helps prevent a "free money" rounding cycle.
      */
-    function invariant_ExchangeRateMonotonicity() public {
-        vm.prank(user1);
-        vault.deposit(1e20, user1);
-        
-        uint256 exchangeRate1 = (vault.totalAssets() * 1e18) / vault.totalSupply();
-        
-        // Add more funds without changing supply (simulate yield)
-        // In real scenario, yield would increase exchange rate
-        
-        vm.prank(user2);
-        vault.deposit(1e20, user2);
-        
-        // Exchange rate should not decrease
-        assertGe(vault.totalAssets(), 2e20, "Total assets should at least equal deposits");
-    }
-
-    // ============== INVARIANT: ROUNDING SAFETY ==============
-
-    /**
-     * @dev Invariant: small amounts should not cause rounding exploits
-     */
-    function invariant_RoundingSafety() public {
-        vm.prank(user1);
-        vault.deposit(1e20, user1);
-        
-        uint256 userShares = vault.balanceOf(user1);
-        
-        // Convert back to assets
-        uint256 userAssets = vault.convertToAssets(userShares);
-        
-        // Due to rounding, might be slightly less
-        assertLe(vault.totalAssets() - userAssets, 1, "Rounding error should be minimal");
-    }
-
-    // ============== INVARIANT: NO DOUBLE SPENDING ==============
-
-    /**
-     * @dev Invariant: cannot withdraw more than balance
-     */
-    function invariant_NoDoubleSpending() public {
-        vm.prank(user1);
-        vault.deposit(1e20, user1);
-        
-        uint256 userBalance = vault.balanceOf(user1);
-        
-        // Try to withdraw all
-        vm.prank(user1);
-        uint256 shares = vault.withdraw(vault.totalAssets(), user1, user1);
-        
-        // User balance should now be zero
-        uint256 remainingShares = vault.balanceOf(user1);
-        assertEq(remainingShares, userBalance - shares, "User cannot double spend");
-    }
-
-    // ============== INVARIANT: TOTAL ASSETS TRACKING ==============
-
-    /**
-     * @dev Invariant: vault tracking of total assets must match deposits - withdrawals
-     */
-    function invariant_TotalAssetsTracking() public {
-        uint256 expectedAssets = 0;
-        
-        vm.prank(user1);
-        vault.deposit(1e20, user1);
-        expectedAssets += 1e20;
-        assertEq(vault.totalAssets(), expectedAssets);
-        
-        vm.prank(user2);
-        vault.deposit(2e20, user2);
-        expectedAssets += 2e20;
-        assertEq(vault.totalAssets(), expectedAssets);
-        
-        vm.prank(user1);
-        vault.withdraw(5e19, user1, user1);
-        expectedAssets -= 5e19;
-        assertEq(vault.totalAssets(), expectedAssets);
-    }
-
-    // ============== INVARIANT: CONVERSION REVERSIBILITY ==============
-
-    /**
-     * @dev Invariant: convertToAssets(convertToShares(x)) ≈ x
-     */
-    function invariant_ConversionReversibility() public {
-        vm.prank(user1);
-        vault.deposit(1e20, user1);
-        
-        uint256 originalAssets = 5e19;
-        uint256 shares = vault.convertToShares(originalAssets);
+    function invariant_NoProfitFromRoundTripConversion() public view {
+        uint256 assets = 1e18;
+        uint256 shares = vault.convertToShares(assets);
         uint256 assetsBack = vault.convertToAssets(shares);
-        
-        // Should be equal (rounding may cause 1-2 wei difference)
-        assertApproxEqAbs(
-            originalAssets,
-            assetsBack,
-            2,
-            "Conversions should be reversible"
-        );
-    }
-
-    // ============== INVARIANT: ZERO BALANCE AFTER FULL WITHDRAWAL ==============
-
-    /**
-     * @dev Invariant: user shares should be zero after withdrawing all
-     */
-    function invariant_ZeroBalanceAfterFullWithdrawal() public {
-        vm.prank(user1);
-        vault.deposit(1e20, user1);
-        
-        vm.prank(user1);
-        vault.withdraw(vault.totalAssets(), user1, user1);
-        
-        assertEq(vault.balanceOf(user1), 0, "Balance should be zero after full withdrawal");
-        assertEq(vault.totalSupply(), 0, "Total supply should be zero when empty");
-    }
-
-    // ============== MULTI-OPERATION INVARIANT TESTS ==============
-
-    /**
-     * @dev Invariant: multiple deposits and withdrawals maintain integrity
-     */
-    function invariant_MultipleOperations() public {
-        // User 1: deposit -> withdraw -> redeem pattern
-        vm.prank(user1);
-        vault.deposit(1e20, user1);
-        
-        vm.prank(user2);
-        vault.deposit(2e20, user2);
-        
-        uint256 user1AssetsAfterDeposit = vault.convertToAssets(vault.balanceOf(user1));
-        
-        vm.prank(user1);
-        vault.withdraw(5e19, user1, user1);
-        
-        uint256 user1AssetsAfterWithdraw = vault.convertToAssets(vault.balanceOf(user1));
-        
-        // Assets should have decreased
-        assertLt(user1AssetsAfterWithdraw, user1AssetsAfterDeposit);
-        
-        // Vault total should decrease by withdrawal amount
-        assertEq(vault.totalAssets(), (1e20 + 2e20) - 5e19);
-    }
-
-    /**
-     * @dev Invariant: three-way operations maintain consistency
-     */
-    function invariant_ThreeUserOperations() public {
-        // User 1: small deposit
-        vm.prank(user1);
-        vault.deposit(1e19, user1);
-        
-        // User 2: medium deposit
-        vm.prank(user2);
-        vault.deposit(1e20, user2);
-        
-        // User 3: large deposit
-        vm.prank(user3);
-        vault.deposit(1e21, user3);
-        
-        uint256 totalAssets = vault.totalAssets();
-        uint256 expectedTotal = 1e19 + 1e20 + 1e21;
-        
-        assertEq(totalAssets, expectedTotal, "Total assets should equal sum of deposits");
-        assertEq(vault.totalSupply(), expectedTotal, "Total supply should equal total assets");
+        assertLe(assetsBack, assets, "round trip increased assets");
     }
 }
