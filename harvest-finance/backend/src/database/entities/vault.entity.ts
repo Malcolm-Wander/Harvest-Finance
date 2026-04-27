@@ -3,8 +3,9 @@ import {
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
-  UpdateDateColumn,
-  OneToMany,
+  Entity,
+  Index,
+  JoinColumn,
   ManyToOne,
   JoinColumn,
   Index,
@@ -38,18 +39,10 @@ export class Vault {
   @Column({ name: 'owner_id' })
   ownerId: string;
 
-  @Column({
-    type: 'enum',
-    enum: VaultType,
-    default: VaultType.CROP_PRODUCTION,
-  })
+  @Column({ type: 'enum', enum: VaultType, default: VaultType.CROP_PRODUCTION })
   type: VaultType;
 
-  @Column({
-    type: 'enum',
-    enum: VaultStatus,
-    default: VaultStatus.ACTIVE,
-  })
+  @Column({ type: 'enum', enum: VaultStatus, default: VaultStatus.ACTIVE })
   status: VaultStatus;
 
   @Column({ name: 'vault_name', length: 100 })
@@ -58,51 +51,19 @@ export class Vault {
   @Column({ type: 'text', nullable: true })
   description: string | null;
 
-  @Column({
-    type: 'decimal',
-    precision: 18,
-    scale: 8,
-    default: 0,
-  })
+  @Column({ type: 'decimal', precision: 18, scale: 8, default: 0 })
   totalDeposits: number;
 
-  @Column({
-    type: 'decimal',
-    precision: 18,
-    scale: 8,
-    default: 0,
-  })
+  @Column({ type: 'decimal', precision: 18, scale: 8, default: 0 })
   maxCapacity: number;
 
-  @Column({
-    type: 'decimal',
-    precision: 18,
-    scale: 8,
-    default: 0,
-  })
+  @Column({ type: 'decimal', precision: 18, scale: 8, default: 0 })
   interestRate: number;
 
-  @Column({
-    type: 'decimal',
-    precision: 18,
-    scale: 8,
-    default: 0,
-    nullable: true
-  })
-  liquidity: number;
-
-  @Column({
-    type: 'timestamp with time zone',
-    name: 'maturity_date',
-    nullable: true,
-  })
+  @Column({ type: 'timestamp with time zone', name: 'maturity_date', nullable: true })
   maturityDate: Date | null;
 
-  @Column({
-    type: 'timestamp with time zone',
-    name: 'lock_period_end',
-    nullable: true,
-  })
+  @Column({ type: 'timestamp with time zone', name: 'lock_period_end', nullable: true })
   lockPeriodEnd: Date | null;
 
   @Column({ name: 'is_public', default: true })
@@ -114,8 +75,7 @@ export class Vault {
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 
-  // Relationships
-  @ManyToOne(() => User, (user) => user.id, { onDelete: 'CASCADE' })
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'owner_id' })
   owner: User;
 
@@ -127,10 +87,7 @@ export class Vault {
   }
 
   get utilizationPercentage(): number {
-    if (Number(this.maxCapacity) === 0) {
-      return 0;
-    }
-
+    if (Number(this.maxCapacity) === 0) return 0;
     return (Number(this.totalDeposits) / Number(this.maxCapacity)) * 100;
   }
 

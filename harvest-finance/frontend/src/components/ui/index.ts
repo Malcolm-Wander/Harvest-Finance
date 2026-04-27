@@ -24,7 +24,7 @@ export type { InputProps, TextareaProps } from './Input';
 export { Modal, ModalHeader, ModalBody, ModalFooter } from './Modal';
 export type { ModalProps, ModalHeaderProps, ModalBodyProps, ModalFooterProps } from './Modal';
 
-export { Badge, StatusBadge } from './Badge';
+export { Badge, StatusBadge, StrategyBadge } from './Badge';
 export type { BadgeProps } from './Badge';
 
 export { Container, Section, Stack, Inline } from './Container';
@@ -77,3 +77,15 @@ export type {
 } from './types';
 
 export { cn, withPrefix } from './types';
+
+// ============================================
+// Theme
+// ============================================
+
+export { ThemeToggle } from './ThemeToggle';
+
+// ============================================
+// Skeleton Loaders
+// ============================================
+
+export { Skeleton, VaultCardSkeleton, VaultTableRowSkeleton, TransactionRowSkeleton, MetricCardSkeleton } from './Skeleton';

@@ -34,9 +34,6 @@ export class VaultsService {
     private vaultGateway: VaultGateway,
   ) {}
 
-  /**
-   * Get vault by ID with full details
-   */
   async getVaultById(vaultId: string): Promise<Vault> {
     const vault = await this.vaultRepository.findOne({
       where: { id: vaultId },
@@ -50,29 +47,38 @@ export class VaultsService {
     return vault;
   }
 
-  /**
-   * Process deposit into vault
-   */
   async depositToVault(
     vaultId: string,
     depositDto: DepositDto,
   ): Promise<DepositVaultResponseDto> {
-    const { userId, amount } = depositDto;
+    const { userId, amount, idempotencyKey } = depositDto;
+    
+    if (idempotencyKey) {
+      const existingDeposit = await this.depositRepository.findOne({
+        where: { idempotencyKey, userId },
+        relations: ['vault'],
+      });
+      if (existingDeposit) {
+        this.logger.log(`Duplicate deposit detected with idempotencyKey: ${idempotencyKey}`, 'VaultsService');
+        const userTotalDeposits = await this.getUserTotalDeposits(userId);
+        return {
+          vault: existingDeposit.vault ? this.mapVaultToResponse(existingDeposit.vault) : null,
+          deposit: this.mapDepositToResponse(existingDeposit),
+          userTotalDeposits,
+        };
+      }
+    }
 
-    // Validate amount
     if (amount <= 0) {
       throw new BadRequestException('Deposit amount must be greater than 0');
     }
 
-    // Get vault and validate
     const vault = await this.getVaultById(vaultId);
 
-    // Check vault status
     if (vault.status !== VaultStatus.ACTIVE) {
       throw new BadRequestException('Vault is not active for deposits');
     }
 
-    // Check vault capacity
     if (vault.isFullCapacity) {
       throw new BadRequestException('Vault has reached maximum capacity');
     }
@@ -83,7 +89,6 @@ export class VaultsService {
       );
     }
 
-    // Create deposit record
     const deposit = this.depositRepository.create({
       userId,
       vaultId,
@@ -92,17 +97,14 @@ export class VaultsService {
       transactionHash: null,
       stellarTransactionId: null,
       confirmedAt: null,
+      idempotencyKey: idempotencyKey || null,
     });
 
-    // Use transaction for atomic updates
     const result = await this.dataSource.transaction(async (manager) => {
-      // Save deposit
       const savedDeposit = await manager.save(deposit);
 
-      // Update vault total deposits
       await manager.increment(Vault, { id: vaultId }, 'totalDeposits', amount);
 
-      // Check if vault is now at full capacity
       const updatedVault = await manager.findOne(Vault, {
         where: { id: vaultId },
       });
@@ -111,24 +113,28 @@ export class VaultsService {
         await manager.update(
           Vault,
           { id: vaultId },
-          {
-            status: VaultStatus.FULL_CAPACITY,
-          },
+          { status: VaultStatus.FULL_CAPACITY },
         );
       }
 
       return { deposit: savedDeposit, vault: updatedVault };
     });
 
-    // Mock blockchain confirmation
+    if (amount >= 10000) {
+      await this.notificationsService.create({
+        title: 'Large Deposit Alert',
+        message: `A large deposit of ${amount} has been initiated for vault ${vault.vaultName}.`,
+        type: NotificationType.LARGE_TRANSACTION,
+        adminOnly: true,
+      });
+    }
+
     const confirmedDeposit = await this.confirmDeposit(result.deposit.id);
 
-    // Get user's total deposits
     const userTotalDeposits = await this.getUserTotalDeposits(userId);
 
     this.logger.log(`Deposit of ${amount} confirmed into vault ${vaultId} by user ${userId}`, 'VaultsService');
 
-    // Emit real-time event
     this.vaultGateway.emitDeposit({
       vaultId,
       vaultName: vault.vaultName,
@@ -145,9 +151,6 @@ export class VaultsService {
     };
   }
 
-  /**
-   * Confirm deposit (mock blockchain confirmation)
-   */
   private async confirmDeposit(depositId: string): Promise<Deposit> {
     const deposit = await this.depositRepository.findOne({
       where: { id: depositId },
@@ -182,9 +185,6 @@ export class VaultsService {
     return updatedDeposit;
   }
 
-  /**
-   * Get user's total deposits across all vaults
-   */
   async getUserTotalDeposits(userId: string): Promise<number> {
     const result = await this.depositRepository
       .createQueryBuilder('deposit')
@@ -196,9 +196,6 @@ export class VaultsService {
     return result?.total ? parseFloat(result.total) : 0;
   }
 
-  /**
-   * Get all vaults for a user
-   */
   async getUserVaults(userId: string): Promise<VaultResponseDto[]> {
     const vaults = await this.vaultRepository.find({
       where: { ownerId: userId },
@@ -209,9 +206,6 @@ export class VaultsService {
     return vaults.map((vault) => this.mapVaultToResponse(vault));
   }
 
-  /**
-   * Get all public vaults
-   */
   async getPublicVaults(): Promise<VaultResponseDto[]> {
     const vaults = await this.vaultRepository.find({
       where: { isPublic: true },
@@ -222,9 +216,6 @@ export class VaultsService {
     return vaults.map((vault) => this.mapVaultToResponse(vault));
   }
 
-  /**
-   * Map vault entity to response DTO
-   */
   mapVaultToResponse(vault: Vault): VaultResponseDto {
     return {
       id: vault.id,
@@ -246,9 +237,6 @@ export class VaultsService {
     };
   }
 
-  /**
-   * Process withdrawal from vault
-   */
   async withdrawFromVault(
     vaultId: string,
     userId: string,
@@ -274,7 +262,9 @@ export class VaultsService {
 
     const result = await this.dataSource.transaction(async (manager) => {
       const savedWithdrawal = await manager.save(withdrawal);
+
       await manager.decrement(Vault, { id: vaultId }, 'totalDeposits', amount);
+
       const updatedVault = await manager.findOne(Vault, {
         where: { id: vaultId },
       });
@@ -310,7 +300,6 @@ export class VaultsService {
 
     this.logger.log(`Withdrawal of ${amount} confirmed from vault ${vaultId} by user ${userId}`, 'VaultsService');
 
-    // Emit real-time event
     this.vaultGateway.emitWithdrawal({
       vaultId,
       vaultName: vault.vaultName,
@@ -326,9 +315,6 @@ export class VaultsService {
     };
   }
 
-  /**
-   * Map deposit entity to response DTO
-   */
   private mapDepositToResponse(deposit: Deposit): DepositResponseDto {
     return {
       id: deposit.id,

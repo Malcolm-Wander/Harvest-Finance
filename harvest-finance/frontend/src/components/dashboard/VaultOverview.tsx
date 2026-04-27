@@ -3,6 +3,7 @@
 import React from "react";
 import { Database, Coins, TrendingUp } from "lucide-react";
 import { VaultCard, VaultProps } from "./VaultCard";
+import { useTranslation } from "react-i18next";
 
 const mockVaults: VaultProps[] = [
   {
@@ -71,14 +72,15 @@ const mockVaults: VaultProps[] = [
 ];
 
 export function VaultOverview() {
+  const { t } = useTranslation();
   return (
     <section>
       <div className="mb-6">
         <h2 className="text-xl font-bold text-gray-900 tracking-tight">
-          Active Vaults
+          {t('dashboard.active_vaults')}
         </h2>
         <p className="text-sm text-gray-500 mt-1">
-          Explore opportunities, deposit assets, and watch your yields grow.
+          {t('dashboard.vaults_desc')}
         </p>
       </div>
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">

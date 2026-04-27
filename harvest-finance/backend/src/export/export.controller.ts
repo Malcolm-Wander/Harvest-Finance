@@ -32,11 +32,11 @@ export class ExportController {
    */
   @Get('users/:userId/vault/export')
   @ApiOperation({ summary: 'Export vault data for a user' })
-  @ApiQuery({ name: 'format', enum: ['csv', 'excel'], required: true })
+  @ApiQuery({ name: 'format', enum: ['csv', 'excel', 'pdf'], required: true })
   @ApiResponse({ status: 200, description: 'File download initiated' })
   async exportUserVault(
     @Param('userId') userId: string,
-    @Query('format') format: 'csv' | 'excel',
+    @Query('format') format: 'csv' | 'excel' | 'pdf',
     @Request() req: any,
     @Res() res: Response,
   ) {
@@ -58,6 +58,14 @@ export class ExportController {
         `attachment; filename=vault_export_${userId}_${Date.now()}.xlsx`,
       );
       return res.send(buffer);
+    } else if (format === 'pdf') {
+      const buffer = await this.exportService.generatePdf(data);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename=vault_export_${userId}_${Date.now()}.pdf`,
+      );
+      return res.send(buffer);
     } else {
       const csv = await this.exportService.generateCsv(data);
       res.setHeader('Content-Type', 'text/csv');
@@ -74,11 +82,11 @@ export class ExportController {
    */
   @Get('users/:userId/transactions')
   @ApiOperation({ summary: 'Export transaction history for a user' })
-  @ApiQuery({ name: 'format', enum: ['csv', 'excel'], required: true })
+  @ApiQuery({ name: 'format', enum: ['csv', 'excel', 'pdf'], required: true })
   @ApiResponse({ status: 200, description: 'File download initiated' })
   async exportUserTransactions(
     @Param('userId') userId: string,
-    @Query('format') format: 'csv' | 'excel',
+    @Query('format') format: 'csv' | 'excel' | 'pdf',
     @Request() req: any,
     @Res() res: Response,
   ) {
@@ -100,6 +108,14 @@ export class ExportController {
         `attachment; filename=transactions_${userId}_${Date.now()}.xlsx`,
       );
       return res.send(buffer);
+    } else if (format === 'pdf') {
+      const buffer = await this.exportService.generatePdf(data);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename=transactions_${userId}_${Date.now()}.pdf`,
+      );
+      return res.send(buffer);
     } else {
       const csv = await this.exportService.generateCsv(data);
       res.setHeader('Content-Type', 'text/csv');
@@ -116,10 +132,10 @@ export class ExportController {
    */
   @Get('admin/vault/export')
   @ApiOperation({ summary: 'Export all vault data (Admin only)' })
-  @ApiQuery({ name: 'format', enum: ['csv', 'excel'], required: true })
+  @ApiQuery({ name: 'format', enum: ['csv', 'excel', 'pdf'], required: true })
   @ApiResponse({ status: 200, description: 'File download initiated' })
   async exportAllVaults(
-    @Query('format') format: 'csv' | 'excel',
+    @Query('format') format: 'csv' | 'excel' | 'pdf',
     @Request() req: any,
     @Res() res: Response,
   ) {
@@ -141,6 +157,14 @@ export class ExportController {
         `attachment; filename=admin_vault_export_${Date.now()}.xlsx`,
       );
       return res.send(buffer);
+    } else if (format === 'pdf') {
+      const buffer = await this.exportService.generatePdf(data);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename=admin_vault_export_${Date.now()}.pdf`,
+      );
+      return res.send(buffer);
     } else {
       const csv = await this.exportService.generateCsv(data);
       res.setHeader('Content-Type', 'text/csv');
@@ -157,10 +181,10 @@ export class ExportController {
    */
   @Get('admin/transactions')
   @ApiOperation({ summary: 'Export all transactions (Admin only)' })
-  @ApiQuery({ name: 'format', enum: ['csv', 'excel'], required: true })
+  @ApiQuery({ name: 'format', enum: ['csv', 'excel', 'pdf'], required: true })
   @ApiResponse({ status: 200, description: 'File download initiated' })
   async exportAllTransactions(
-    @Query('format') format: 'csv' | 'excel',
+    @Query('format') format: 'csv' | 'excel' | 'pdf',
     @Request() req: any,
     @Res() res: Response,
   ) {
@@ -180,6 +204,14 @@ export class ExportController {
       res.setHeader(
         'Content-Disposition',
         `attachment; filename=admin_transactions_${Date.now()}.xlsx`,
+      );
+      return res.send(buffer);
+    } else if (format === 'pdf') {
+      const buffer = await this.exportService.generatePdf(data);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename=admin_transactions_${Date.now()}.pdf`,
       );
       return res.send(buffer);
     } else {

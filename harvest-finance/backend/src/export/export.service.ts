@@ -8,6 +8,7 @@ import { User, UserRole } from '../database/entities/user.entity';
 import * as fastCsv from 'fast-csv';
 import * as ExcelJS from 'exceljs';
 import { Readable } from 'stream';
+import * as PDFDocument from 'pdfkit';
 
 export interface TransactionExportData {
   date: string;
@@ -155,5 +156,68 @@ export class ExportService {
 
     const buffer = await workbook.xlsx.writeBuffer();
     return Buffer.from(buffer as ArrayBuffer);
+  }
+
+  /**
+   * Generate PDF buffer from transaction data
+   */
+  async generatePdf(data: TransactionExportData[]): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+      const doc = new (PDFDocument as any)({
+        margin: 50,
+        size: 'A4',
+      });
+      const chunks: Buffer[] = [];
+
+      doc.on('data', (chunk) => chunks.push(chunk));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', (err) => reject(err));
+
+      // Header
+      doc
+        .fillColor('#444444')
+        .fontSize(20)
+        .text('Harvest Finance - Transaction Report', { align: 'center' });
+      doc.moveDown();
+      doc
+        .fontSize(10)
+        .text(`Generated on: ${new Date().toLocaleString()}`, { align: 'right' });
+      doc.moveDown();
+
+      // Table Header
+      const tableTop = 150;
+      doc.fontSize(10).font('Helvetica-Bold');
+      doc.text('Date', 50, tableTop);
+      doc.text('Type', 200, tableTop);
+      doc.text('Vault', 270, tableTop);
+      doc.text('Amount', 400, tableTop);
+      doc.text('Status', 480, tableTop);
+
+      doc
+        .moveTo(50, tableTop + 15)
+        .lineTo(550, tableTop + 15)
+        .stroke();
+
+      // Table Rows
+      let currentY = tableTop + 25;
+      doc.font('Helvetica');
+
+      data.forEach((row) => {
+        if (currentY > 750) {
+          doc.addPage();
+          currentY = 50;
+        }
+
+        doc.text(new Date(row.date).toLocaleDateString(), 50, currentY);
+        doc.text(row.type, 200, currentY);
+        doc.text(row.vault, 270, currentY, { width: 120 });
+        doc.text(`$${row.amount}`, 400, currentY);
+        doc.text(row.status, 480, currentY);
+
+        currentY += 20;
+      });
+
+      doc.end();
+    });
   }
 }

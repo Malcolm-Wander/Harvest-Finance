@@ -85,7 +85,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, search, o
                       <span className="font-medium text-gray-900">
                         {user.firstName || 'Unknown'} {user.lastName || ''}
                       </span>
-                      <span className="text-xs text-gray-500">Joined {new Date(user.createdAt).toLocaleDateString()}</span>
+                      <span className="text-xs text-gray-500">Joined {new Date(user.createdAt).toLocaleDateString('en-US')}</span>
                     </div>
                   </TableCell>
                   <TableCell>{user.email}</TableCell>
@@ -95,7 +95,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, search, o
                       {user.isActive ? 'Active' : 'Suspended'}
                     </Badge>
                   </TableCell>
-                  <TableCell>{user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'Never'}</TableCell>
+                  <TableCell>{user.lastLogin ? new Date(user.lastLogin).toLocaleString('en-US') : 'Never'}</TableCell>
                   <TableCell className="text-right">
                     <Inline align="center" gap="sm" className="justify-end">
                       <Button
