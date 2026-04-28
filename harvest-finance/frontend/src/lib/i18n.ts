@@ -4,6 +4,8 @@ import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 
 import en from '../../public/locales/en/common.json';
+import es from '../../public/locales/es/common.json';
+import pt from '../../public/locales/pt/common.json';
 import fr from '../../public/locales/fr/common.json';
 import ha from '../../public/locales/ha/common.json';
 
@@ -18,6 +20,8 @@ if (isBrowser) {
 i18nInstance.init({
     resources: {
       en: { common: en },
+      es: { common: es },
+      pt: { common: pt },
       fr: { common: fr },
       ha: { common: ha }
     },
