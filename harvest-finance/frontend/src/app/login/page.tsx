@@ -10,6 +10,7 @@ import { StellarAuth } from '@/components/auth/StellarAuth';
 import { EyeIcon, EyeSlashIcon } from '@/components/icons';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { loginSchema, type LoginFormData } from '@/lib/validations/auth';
+import { ErrorState } from '@/components/ui';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -91,9 +92,12 @@ export default function LoginPage() {
       </div>
 
       {error ? (
-        <div className="status-banner status-banner--error mb-5" role="alert" aria-live="polite">
-          <p>{error}</p>
-        </div>
+        <ErrorState
+          variant="inline"
+          title="Sign-in failed"
+          description={error}
+          className="mb-5"
+        />
       ) : null}
 
       {authMethod === 'email' ? (

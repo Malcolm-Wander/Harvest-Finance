@@ -116,6 +116,13 @@ export { EmptyState } from './EmptyState';
 export type { EmptyStateProps, EmptyStateVariant } from './EmptyState';
 
 // ============================================
+// Error State
+// ============================================
+
+export { ErrorState } from './ErrorState';
+export type { ErrorStateProps, ErrorStateVariant } from './ErrorState';
+
+// ============================================
 // Transaction Status
 // ============================================
 
