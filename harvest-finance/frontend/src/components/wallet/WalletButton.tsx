@@ -5,13 +5,15 @@ import { useWalletStore, shortenAddress } from '@/store/wallet';
 import { Button, Tooltip } from '@/components/ui';
 import { Badge } from '@/components/ui';
 import { useToastStore } from '@/store/useToastStore';
-import { Info } from 'lucide-react';
+import { Info, Wallet as WalletIconLucide } from 'lucide-react';
 import { getTermTooltip } from '@/lib/defi-terms';
+import { WalletConnectModal } from './WalletConnectModal';
 
 export function WalletButton() {
   const { address, isConnected, isConnecting, error, connect, disconnect } = useWalletStore();
   const { showToast } = useToastStore();
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showConnectModal, setShowConnectModal] = useState(false);
   const [isCopying, setIsCopying] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const connectButtonRef = useRef<HTMLButtonElement>(null);
@@ -40,12 +42,8 @@ export function WalletButton() {
     }
   }, [error, showToast]);
 
-  const handleConnect = async () => {
-    try {
-      await connect();
-    } catch (err) {
-      // Error is handled by the store and useEffect above
-    }
+  const handleConnect = () => {
+    setShowConnectModal(true);
   };
 
   const handleCopyAddress = async () => {
@@ -84,23 +82,17 @@ export function WalletButton() {
           size="md"
           onClick={handleConnect}
           isLoading={isConnecting}
-          leftIcon={<WalletIcon />}
+          leftIcon={<WalletIconLucide className="w-4 h-4" />}
           disabled={isConnecting}
+          className="rounded-xl font-bold shadow-lg shadow-harvest-green-500/20"
           aria-label={isConnecting ? 'Connecting to wallet...' : 'Connect wallet'}
-          aria-describedby={error ? 'wallet-error' : undefined}
         >
           {isConnecting ? 'Connecting...' : 'Connect Wallet'}
         </Button>
-        {error && (
-          <div
-            id="wallet-error"
-            className="text-xs text-red-600 max-w-[200px] text-right animate-in slide-in-from-top-1 duration-200"
-            role="alert"
-            aria-live="polite"
-          >
-            {error}
-          </div>
-        )}
+        <WalletConnectModal 
+          isOpen={showConnectModal} 
+          onClose={() => setShowConnectModal(false)} 
+        />
       </div>
     );
   }

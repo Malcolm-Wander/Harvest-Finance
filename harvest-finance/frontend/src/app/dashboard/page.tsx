@@ -2,9 +2,8 @@
 
 import React from "react";
 import { VaultOverview } from "@/components/dashboard/VaultOverview";
-import { TrendingUp, Wallet, ArrowRight, Activity } from "lucide-react";
-import { Card, CardBody } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
+import { TrendingUp, Wallet, ArrowRight, Activity, ShieldCheck, Zap, ArrowUpRight } from "lucide-react";
+import { Card, CardBody, Button, Badge, cn } from "@/components/ui";
 import {
     AreaChart,
     Area,
@@ -26,210 +25,192 @@ const chartData = [
 
 const positions = [
     {
-        vault: "ETH Stablecoin LP",
+        vault: "USDC Alpha Reserve",
         tvl: "$12,231",
         apy: "8.45%",
         earnings: "$34.21",
     },
-    { vault: "WBTC Core", tvl: "$9,876", apy: "6.72%", earnings: "$18.76" },
-    { vault: "WBTC Core", tvl: "$9,876", apy: "6.72%", earnings: "$18.76" },
-    { vault: "ETH LST LP", tvl: "$7,231", apy: "7.91%", earnings: "$15.32" },
+    { vault: "XLM/USDC Harvest", tvl: "$9,876", apy: "6.72%", earnings: "$18.76" },
+    { vault: "Stellar Aqua Pool", tvl: "$7,231", apy: "7.91%", earnings: "$15.32" },
 ];
 
 export default function DashboardPage() {
     return (
-        <div className="space-y-8 pb-10">
-            {/* Dashboard Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-12 pb-20 animate-in fade-in duration-1000">
+            {/* Dashboard Header - Premium Branding */}
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 border-b border-gray-100 dark:border-white/5 pb-8">
                 <div>
-                    <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
-                        Dashboard
+                    <div className="flex items-center gap-3 mb-2">
+                       <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                       <span className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-600 dark:text-emerald-400">Institutional Interface</span>
+                    </div>
+                    <h1 className="text-4xl md:text-6xl font-black text-gray-900 dark:text-white tracking-tighter">
+                        Portfolio Hub
                     </h1>
-                    <p className="text-gray-500 mt-1">
-                        Welcome back. Here is an overview of your portfolio.
+                    <p className="text-gray-500 dark:text-gray-400 mt-2 font-medium">
+                        Real-time analytics for your capital deployment on the Stellar network.
                     </p>
                 </div>
-                <div className="flex items-center">
+                <div className="flex items-center gap-4">
+                    <div className="hidden lg:flex items-center gap-2 px-4 py-2 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/10">
+                       <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                       <span className="text-xs font-black uppercase tracking-widest text-gray-400">Security Verified</span>
+                    </div>
                     <Button
                         variant="primary"
-                        leftIcon={<Wallet className="w-4 h-4" />}
+                        size="lg"
+                        className="rounded-2xl px-8 py-7 text-lg font-black shadow-2xl shadow-harvest-green-500/20 animate-shimmer"
                     >
-                        Connect Wallet
+                        <div className="flex items-center gap-2">
+                           <Wallet className="w-5 h-5" />
+                           <span>Sync Wallet</span>
+                        </div>
                     </Button>
                 </div>
             </div>
-            {/* Quick Stats Section */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                <Card variant="default">
-                    <CardBody className="p-5 flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full bg-harvest-green-50 flex items-center justify-center text-harvest-green-600 flex-shrink-0">
-                            <Wallet className="w-6 h-6" />
+
+            {/* Premium Metrics Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {[
+                  { label: "Total Assets Locked", value: "$45,231.89", sub: "+3.89% (24h)", icon: Wallet, color: "emerald" },
+                  { label: "Accrued Harvesting", value: "$1,452.12", sub: "+$42.10 today", icon: TrendingUp, color: "harvest-green" },
+                  { label: "Active Deployments", value: "07", sub: "Across 4 protocols", icon: Activity, color: "emerald" },
+                  { label: "Network Gas Savings", value: "142 XLM", sub: "Via Soroban batching", icon: Zap, color: "harvest-green" }
+                ].map((stat, i) => (
+                  <Card key={i} className="group glass-panel glass-rim p-6 hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
+                     <div className="absolute inset-0 animate-shimmer opacity-0 group-hover:opacity-10 pointer-events-none" />
+                     <div className="flex justify-between items-start mb-6">
+                        <div className={cn(
+                          "p-3 rounded-2xl border transition-all duration-500 group-hover:scale-110 group-hover:rotate-6 shadow-lg",
+                          stat.color === 'emerald' ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" : "bg-harvest-green-500/10 border-harvest-green-500/20 text-harvest-green-600"
+                        )}>
+                           <stat.icon className="w-6 h-6" />
                         </div>
-                        <div>
-                            <p className="text-sm font-medium text-gray-500">
-                                Total Deposits
-                            </p>
-                            <p className="text-2xl font-bold text-gray-900">
-                                $0.00
-                            </p>
-                        </div>
-                    </CardBody>
-                </Card>
-                <Card variant="default">
-                    <CardBody className="p-5 flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 flex-shrink-0">
-                            <TrendingUp className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <p className="text-sm font-medium text-gray-500">
-                                Total Rewards
-                            </p>
-                            <p className="text-2xl font-bold text-gray-900">
-                                $0.00
-                            </p>
-                        </div>
-                    </CardBody>
-                </Card>
-                <Card variant="default">
-                    <CardBody className="p-5 flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full bg-harvest-green-50 flex items-center justify-center text-harvest-green-600">
-                            <Wallet className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <p className="text-sm font-medium text-gray-500">
-                                Total Value Locked
-                            </p>
-                            <p className="text-2xl font-bold text-gray-900">
-                                $45,231.89
-                            </p>
-                            <p className="text-sm text-harvest-green-600">
-                                +3.89%
-                            </p>
-                        </div>
-                    </CardBody>
-                </Card>
-                <Card variant="default">
-                    <CardBody className="p-5 flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
-                            <TrendingUp className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <p className="text-sm font-medium text-gray-500">
-                                Daily Earnings
-                            </p>
-                            <p className="text-2xl font-bold text-gray-900">
-                                $124.56
-                            </p>
-                            <p className="text-sm text-emerald-600">+12.45%</p>
-                        </div>
-                    </CardBody>
-                </Card>
-                <Card variant="default">
-                    <CardBody className="p-5 flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center text-green-600">
-                            <Activity className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <p className="text-sm font-medium text-gray-500">
-                                Active Vaults
-                            </p>
-                            <p className="text-2xl font-bold text-gray-900">
-                                7
-                            </p>
-                            <p className="text-sm text-gray-500">
-                                Across 5 vaults
-                            </p>
-                        </div>
-                    </CardBody>
-                </Card>
-                {/* Optional Action Card */}{" "}
-                <Card
-                    variant="default"
-                    className="hidden lg:block bg-gradient-to-br from-harvest-green-600 to-harvest-green-800 text-white border-none"
-                >
-                    <CardBody className="p-5 flex flex-col justify-center h-full">
-                        <h3 className="font-semibold text-lg mb-1">
-                            Discover Vaults
-                        </h3>
-                        <p className="text-harvest-green-100 text-sm mb-3">
-                            Earn yield on your crypto assets safely.
-                        </p>
-                        <div className="flex items-center text-sm font-medium hover:text-harvest-green-200 cursor-pointer">
-                            Explore now <ArrowRight className="w-4 h-4 ml-1" />
-                        </div>
-                    </CardBody>
-                </Card>
+                        <Badge variant="outline" className="text-[9px] font-black tracking-[0.2em] uppercase border-gray-100 dark:border-white/5 opacity-50">Realtime</Badge>
+                     </div>
+                     <p className="text-[10px] font-black uppercase tracking-[0.25em] text-gray-400 mb-1">{stat.label}</p>
+                     <p className="text-3xl font-black text-gray-900 dark:text-white tracking-tighter">{stat.value}</p>
+                     <p className={cn(
+                       "text-xs font-bold mt-2",
+                       stat.sub.startsWith('+') ? "text-emerald-500" : "text-gray-400"
+                     )}>{stat.sub}</p>
+                  </Card>
+                ))}
             </div>
-            {/* Chart Section */}
-            <section className="grid gap-4 lg:grid-cols-2">
-                <div>
-                    <Card variant="default">
-                        <CardBody className="px-2 py-4 h-75">
-                            <p className="text-sm text-gray-500 mb-2">
-                                Portfolio Overview
-                            </p>
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={chartData}>
-                                    <XAxis dataKey="name" />
-                                    <YAxis />
-                                    <Tooltip />
-                                    <Area
-                                        type="monotone"
-                                        dataKey="value"
-                                        stroke="#16a34a"
-                                        fill="#16a34a"
-                                    />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        </CardBody>
-                    </Card>
-                </div>
 
-                {/* Active Positions */}
-                <div>
-                    <Card variant="default">
-                        <CardBody className="p-5">
-                            <div className="flex justify-between items-center mb-4">
-                                <p className="text-sm font-medium text-gray-500">
-                                    Active Vault Positions
-                                </p>
-                                <span className="text-sm text-harvest-green-600 cursor-pointer flex items-center">
-                                    View all{" "}
-                                    <ArrowRight className="w-4 h-4 ml-1" />
-                                </span>
-                            </div>
+            {/* Analysis Center */}
+            <section className="grid gap-6 lg:grid-cols-3">
+                <Card className="lg:col-span-2 glass-panel glass-rim p-8 overflow-hidden">
+                    <div className="flex justify-between items-center mb-10">
+                        <div>
+                           <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400 mb-1">Analytics Engine</p>
+                           <h3 className="text-2xl font-black text-gray-900 dark:text-white tracking-tighter">Performance Forecast</h3>
+                        </div>
+                        <div className="flex gap-2">
+                           {['7D', '1M', '3M', 'ALL'].map(t => (
+                             <button key={t} className="px-3 py-1.5 rounded-lg text-[10px] font-black text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 transition-all">{t}</button>
+                           ))}
+                        </div>
+                    </div>
+                    <div className="h-[300px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={chartData}>
+                                <defs>
+                                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#16a34a" stopOpacity={0.3}/>
+                                        <stop offset="95%" stopColor="#16a34a" stopOpacity={0}/>
+                                    </linearGradient>
+                                </defs>
+                                <XAxis 
+                                  dataKey="name" 
+                                  axisLine={false} 
+                                  tickLine={false} 
+                                  tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 900}}
+                                />
+                                <YAxis hide />
+                                <Tooltip 
+                                  contentStyle={{
+                                    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                                    borderRadius: '16px',
+                                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                                    color: '#fff',
+                                    fontWeight: '900'
+                                  }}
+                                />
+                                <Area
+                                    type="monotone"
+                                    dataKey="value"
+                                    stroke="#16a34a"
+                                    strokeWidth={4}
+                                    fillOpacity={1}
+                                    fill="url(#colorValue)"
+                                />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
+                </Card>
 
-                            <div className="space-y-4">
-                                {positions.map((p, i) => (
-                                    <div
-                                        key={i}
-                                        className="flex justify-between border-b border-gray-100 pb-2"
-                                    >
-                                        <div>
-                                            <p className="font-medium text-gray-900">
-                                                {p.vault}
-                                            </p>
-                                            <p className="text-xs text-gray-500">
-                                                TVL {p.tvl}
-                                            </p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-emerald-600 text-sm">
-                                                {p.apy}
-                                            </p>
-                                            <p className="text-xs text-gray-500">
-                                                {p.earnings}/day
-                                            </p>
-                                        </div>
-                                    </div>
-                                ))}
+                <Card className="glass-panel glass-rim p-8">
+                    <div className="flex justify-between items-center mb-8">
+                        <div>
+                           <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400 mb-1">Live Positions</p>
+                           <h3 className="text-2xl font-black text-gray-900 dark:text-white tracking-tighter">Active Vaults</h3>
+                        </div>
+                        <Button variant="outline" size="sm" className="rounded-xl px-4 py-2 text-[10px] font-black">
+                           MANAGE ALL
+                        </Button>
+                    </div>
+
+                    <div className="space-y-6">
+                        {positions.map((p, i) => (
+                            <div
+                                key={i}
+                                className="group/item flex justify-between items-center p-4 rounded-2xl hover:bg-gray-50 dark:hover:bg-white/5 border border-transparent hover:border-gray-100 dark:hover:border-white/10 transition-all duration-300 cursor-pointer"
+                            >
+                                <div className="flex items-center gap-4">
+                                   <div className="w-10 h-10 rounded-xl bg-harvest-green-500/10 flex items-center justify-center text-harvest-green-600 transition-transform group-hover/item:scale-110">
+                                      <Zap className="w-5 h-5" />
+                                   </div>
+                                   <div>
+                                       <p className="font-black text-gray-900 dark:text-white tracking-tight">
+                                           {p.vault}
+                                       </p>
+                                       <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                                           TVL {p.tvl}
+                                       </p>
+                                   </div>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-emerald-500 font-black tracking-tight">
+                                        {p.apy}
+                                    </p>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                                        {p.earnings}/d
+                                    </p>
+                                </div>
                             </div>
-                        </CardBody>
-                    </Card>
-                </div>
+                        ))}
+                    </div>
+                    
+                    <div className="mt-8 p-6 rounded-[2rem] bg-gradient-to-br from-harvest-green-600 to-harvest-green-900 text-white relative overflow-hidden group">
+                       <div className="absolute inset-0 animate-shimmer opacity-20 pointer-events-none" />
+                       <div className="relative z-10">
+                          <h4 className="font-black text-lg tracking-tighter mb-1">Optimal Yield Strategy</h4>
+                          <p className="text-xs text-harvest-green-100 font-medium mb-4">You have $2.5k available XLM for deployment.</p>
+                          <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest group-hover:gap-4 transition-all duration-500 cursor-pointer">
+                              Boost My Portfolio <ArrowRight className="w-4 h-4" />
+                          </div>
+                       </div>
+                    </div>
+                </Card>
             </section>
-            {/* Main Content Sections */}{" "}
-            <div className="pt-4 border-t border-gray-200">
+
+            {/* Smart Vault Overview */}
+            <div className="pt-12 border-t border-gray-100 dark:border-white/5">
+                <div className="mb-10">
+                   <p className="text-[10px] font-black uppercase tracking-[0.4em] text-emerald-600 dark:text-emerald-400 mb-2">Algorithmically Managed</p>
+                   <h2 className="text-4xl font-black text-gray-900 dark:text-white tracking-tighter">Harvest Protocol Vaults</h2>
+                </div>
                 <VaultOverview />
             </div>
         </div>
