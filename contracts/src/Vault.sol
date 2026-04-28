@@ -8,6 +8,7 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "./interfaces/IVault.sol";
+import "./interfaces/IOracle.sol";
 import "./libraries/VaultLib.sol";
 
 /**
@@ -35,6 +36,12 @@ contract Vault is Initializable, IVault, ERC20Upgradeable, AccessControlUpgradea
     error CannotRescueVaultAsset();
     error NothingToRescue();
     error Paused();
+    error InvalidSlippage();
+    error SlippageExceeded();
+    error PriceOracleNotConfigured();
+    error StaleOraclePrice();
+    error PriceDeviationExceeded(uint256 oraclePrice, uint256 expectedPrice, uint256 maxSlippageBps);
+    error MaxGasPriceExceeded(uint256 gasPrice, uint256 maxGasPrice);
 
     // Roles
     bytes32 public constant ADMIN_ROLE  = keccak256("ADMIN_ROLE");
@@ -46,6 +53,8 @@ contract Vault is Initializable, IVault, ERC20Upgradeable, AccessControlUpgradea
     uint256 private _totalAssets;
     uint256 public depositCap;
     bool public paused;
+    IOracle public priceOracle;
+    uint256 public maxGasPrice;
 
     // Rate Limiting
     uint256 public maxWithdrawalPerBlock;
@@ -60,6 +69,15 @@ contract Vault is Initializable, IVault, ERC20Upgradeable, AccessControlUpgradea
     event EmergencyWithdraw(address indexed admin, address indexed token, address indexed recipient, uint256 amount);
     event VaultAdminAction(address indexed admin, bytes32 indexed action, uint256 oldValue, uint256 newValue);
     event VaultEmergencyAction(address indexed admin, bytes32 indexed action, address indexed target, uint256 amount);
+    event PriceOracleUpdated(address indexed admin, address indexed oldOracle, address indexed newOracle);
+    event MaxGasPriceUpdated(address indexed admin, uint256 oldMaxGasPrice, uint256 newMaxGasPrice);
+    event MEVProtectionChecked(
+        address indexed caller,
+        address indexed asset,
+        uint256 oraclePrice,
+        uint256 expectedPrice,
+        uint256 maxSlippageBps
+    );
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -109,6 +127,27 @@ contract Vault is Initializable, IVault, ERC20Upgradeable, AccessControlUpgradea
         whenNotPaused
         returns (uint256 shares)
     {
+        shares = _deposit(assets, receiver);
+    }
+
+    function depositWithSlippage(
+        uint256 assets,
+        address receiver,
+        uint256 minShares,
+        uint256 expectedAssetPrice,
+        uint256 maxSlippageBps
+    )
+        external
+        nonReentrant
+        whenNotPaused
+        returns (uint256 shares)
+    {
+        _enforceMEVProtection(expectedAssetPrice, maxSlippageBps);
+        shares = _deposit(assets, receiver);
+        if (shares < minShares) revert SlippageExceeded();
+    }
+
+    function _deposit(uint256 assets, address receiver) internal returns (uint256 shares) {
         if (assets == 0) revert ZeroAssets();
         if (receiver == address(0)) revert ZeroReceiver();
         
@@ -141,6 +180,28 @@ contract Vault is Initializable, IVault, ERC20Upgradeable, AccessControlUpgradea
         whenNotPaused
         returns (uint256 shares)
     {
+        shares = _withdraw(assets, receiver, owner);
+    }
+
+    function withdrawWithSlippage(
+        uint256 assets,
+        address receiver,
+        address owner,
+        uint256 maxShares,
+        uint256 expectedAssetPrice,
+        uint256 maxSlippageBps
+    )
+        external
+        nonReentrant
+        whenNotPaused
+        returns (uint256 shares)
+    {
+        _enforceMEVProtection(expectedAssetPrice, maxSlippageBps);
+        shares = _withdraw(assets, receiver, owner);
+        if (shares > maxShares) revert SlippageExceeded();
+    }
+
+    function _withdraw(uint256 assets, address receiver, address owner) internal returns (uint256 shares) {
         if (assets == 0) revert ZeroAssets();
         if (receiver == address(0)) revert ZeroReceiver();
         if (owner == address(0)) revert ZeroOwner();
@@ -181,6 +242,28 @@ contract Vault is Initializable, IVault, ERC20Upgradeable, AccessControlUpgradea
         whenNotPaused
         returns (uint256 assets)
     {
+        assets = _redeem(shares, receiver, owner);
+    }
+
+    function redeemWithSlippage(
+        uint256 shares,
+        address receiver,
+        address owner,
+        uint256 minAssets,
+        uint256 expectedAssetPrice,
+        uint256 maxSlippageBps
+    )
+        external
+        nonReentrant
+        whenNotPaused
+        returns (uint256 assets)
+    {
+        _enforceMEVProtection(expectedAssetPrice, maxSlippageBps);
+        assets = _redeem(shares, receiver, owner);
+        if (assets < minAssets) revert SlippageExceeded();
+    }
+
+    function _redeem(uint256 shares, address receiver, address owner) internal returns (uint256 assets) {
         if (shares == 0) revert ZeroSharesBurned();
         if (receiver == address(0)) revert ZeroReceiver();
         if (owner == address(0)) revert ZeroOwner();
@@ -208,6 +291,26 @@ contract Vault is Initializable, IVault, ERC20Upgradeable, AccessControlUpgradea
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
     }
 
+    function _enforceMEVProtection(uint256 expectedAssetPrice, uint256 maxSlippageBps) internal {
+        if (maxSlippageBps > 10_000) revert InvalidSlippage();
+        if (address(priceOracle) == address(0)) revert PriceOracleNotConfigured();
+        if (maxGasPrice != 0 && tx.gasprice > maxGasPrice) {
+            revert MaxGasPriceExceeded(tx.gasprice, maxGasPrice);
+        }
+        if (priceOracle.isStale(address(asset))) revert StaleOraclePrice();
+
+        (uint256 oraclePrice,) = priceOracle.getPrice(address(asset));
+        uint256 deviation = oraclePrice > expectedAssetPrice
+            ? oraclePrice - expectedAssetPrice
+            : expectedAssetPrice - oraclePrice;
+
+        if (expectedAssetPrice == 0 || (deviation * 10_000) / expectedAssetPrice > maxSlippageBps) {
+            revert PriceDeviationExceeded(oraclePrice, expectedAssetPrice, maxSlippageBps);
+        }
+
+        emit MEVProtectionChecked(msg.sender, address(asset), oraclePrice, expectedAssetPrice, maxSlippageBps);
+    }
+
     /**
      * @dev Internal helper to enforce per-block withdrawal limits.
      */
@@ -231,6 +334,17 @@ contract Vault is Initializable, IVault, ERC20Upgradeable, AccessControlUpgradea
         emit WithdrawalLimitUpdated(maxWithdrawalPerBlock, limit);
         emit VaultAdminAction(msg.sender, keccak256("SET_WITHDRAWAL_LIMIT"), maxWithdrawalPerBlock, limit);
         maxWithdrawalPerBlock = limit;
+    }
+
+    function setPriceOracle(IOracle oracle_) external onlyRole(ADMIN_ROLE) {
+        emit PriceOracleUpdated(msg.sender, address(priceOracle), address(oracle_));
+        priceOracle = oracle_;
+    }
+
+    function setMaxGasPrice(uint256 newMaxGasPrice) external onlyRole(ADMIN_ROLE) {
+        emit MaxGasPriceUpdated(msg.sender, maxGasPrice, newMaxGasPrice);
+        emit VaultAdminAction(msg.sender, keccak256("SET_MAX_GAS_PRICE"), maxGasPrice, newMaxGasPrice);
+        maxGasPrice = newMaxGasPrice;
     }
 
     function setDepositCap(uint256 cap) external onlyRole(ADMIN_ROLE) {
