@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { 
+import {
   Card,
   CardHeader,
   CardBody,
@@ -17,6 +17,7 @@ import {
   Inline,
   ThemeToggle,
   TransactionRowSkeleton,
+  TransactionStatusBadge,
 } from '@/components/ui';
 import { Download, ArrowRightLeft, Calendar, Tag, Coins, Info } from 'lucide-react';
 import { useAuthStore } from '@/lib/stores/auth-store';
@@ -109,7 +110,8 @@ export default function TransactionsPage() {
       </div>
 
       <Card variant="default">
-        <CardBody className="p-0">
+        <CardBody className="p-0 overflow-x-auto">
+          <div className="min-w-[600px]">
           <Table>
             <TableHeader>
               <TableRow>
@@ -140,10 +142,7 @@ export default function TransactionsPage() {
                   <TableCell className="text-gray-700 dark:text-gray-200">{tx.vault}</TableCell>
                   <TableCell className="font-bold text-gray-900 dark:text-white">{tx.amount}</TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-1.5 text-sm text-harvest-green-600 dark:text-harvest-green-400 font-medium">
-                      <div className="w-1.5 h-1.5 rounded-full bg-harvest-green-500" />
-                      {tx.status}
-                    </div>
+                    <TransactionStatusBadge status={tx.status} />
                   </TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="sm">Details</Button>
@@ -152,6 +151,7 @@ export default function TransactionsPage() {
               ))}
             </TableBody>
           </Table>
+          </div>
         </CardBody>
       </Card>
       
