@@ -148,6 +148,7 @@ jobs:
           cache-dependency-path: harvest-finance/frontend/package-lock.json
 
       - run: npm ci
+      - run: npm test -- --passWithNoTests
       - run: npm run test:vitest -- --run --passWithNoTests
 
   frontend-build:
