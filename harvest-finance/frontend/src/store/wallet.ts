@@ -9,7 +9,7 @@ export interface TokenBalance {
   usdValue?: number;
 }
 
-interface WalletState {
+export interface WalletState {
   address: string | null;
   isConnected: boolean;
   isConnecting: boolean;
@@ -21,6 +21,8 @@ interface WalletState {
   connect: () => Promise<void>;
   disconnect: () => void;
   refreshBalances: () => Promise<void>;
+  getXlmBalance: () => number;
+  getTokenBalance: (symbol: string) => number;
 }
 
 export const useWalletStore = create<WalletState>((set, get) => ({
@@ -109,6 +111,16 @@ export const useWalletStore = create<WalletState>((set, get) => ({
       set({ isRefreshing: false });
       throw err;
     }
+  },
+
+  getXlmBalance: () => {
+    const xlm = get().balances.find((b) => b.symbol === "XLM");
+    return xlm ? parseFloat(xlm.balance.replace(/,/g, "")) || 0 : 0;
+  },
+
+  getTokenBalance: (symbol: string) => {
+    const token = get().balances.find((b) => b.symbol === symbol);
+    return token ? parseFloat(token.balance.replace(/,/g, "")) || 0 : 0;
   },
 }));
 

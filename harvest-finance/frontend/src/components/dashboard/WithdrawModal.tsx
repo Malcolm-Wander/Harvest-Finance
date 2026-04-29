@@ -15,6 +15,7 @@ import {
 } from "@/components/ui";
 import { parseStellarError } from "@/lib/errors/stellar-errors";
 import { toI128 } from "@/lib/soroban-i128";
+import { useTransactionValidation } from "@/hooks/useTransactionValidation";
 import { 
   Wallet, 
   ArrowDownLeft, 
@@ -61,11 +62,23 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
   const [isSimulating, setIsSimulating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const {
+    isValid,
+    isOverBalance,
+    isInsufficientGas,
+    isLowGas,
+    errorMessage: validationError,
+    warningMessage: validationWarning,
+  } = useTransactionValidation({
+    amount,
+    availableBalance: vault?.balance ?? "0",
+    assetSymbol: vault?.asset ?? "",
+    operation: "withdraw",
+  });
+
   // Derived values
   const numericAmount = parseFloat(amount) || 0;
   const vaultBalanceNum = parseFloat(String(vault?.balance ?? "0")) || 0;
-  const isOverBalance = numericAmount > vaultBalanceNum && numericAmount > 0;
-  const isValid = numericAmount > 0 && !isOverBalance;
 
   const handleWithdraw = async () => {
     if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
@@ -75,6 +88,11 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
 
     if (isOverBalance) {
       setError("Insufficient balance in vault");
+      return;
+    }
+
+    if (isInsufficientGas) {
+      setError("Insufficient XLM for network gas fees");
       return;
     }
 
@@ -267,7 +285,29 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
             </div>
           )}
 
-          {error && (
+          {validationError && (
+            <div className="animate-in shake-1 duration-300">
+              <Alert
+                variant="error"
+                title="Transaction Blocked"
+                description={validationError}
+                className="rounded-[2rem] border-2 border-red-500/20 bg-red-500/5 text-red-900 dark:text-red-400"
+              />
+            </div>
+          )}
+
+          {validationWarning && !validationError && (
+            <div className="animate-in slide-in-from-top-2 duration-300">
+              <Alert
+                variant="warning"
+                title="Gas Warning"
+                description={validationWarning}
+                className="rounded-[2rem] border-2 border-amber-500/20 bg-amber-500/5 text-amber-900 dark:text-amber-400"
+              />
+            </div>
+          )}
+
+          {error && !validationError && (
             <div className="animate-in shake-1 duration-300">
               <Alert
                 variant="error"
@@ -299,7 +339,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
           isLoading={isLoading || isSimulating}
           isDisabled={!isValid || isLoading || isSimulating}
           onClick={handleWithdraw}
-          className="rounded-[1.5rem] py-10 text-2xl font-black shadow-2xl shadow-harvest-green-500/40 transition-all hover:scale-[1.02] active:scale-[0.98] animate-shimmer"
+          className="rounded-[1.5rem] py-10 text-2xl font-black shadow-2xl shadow-harvest-green-500/40 transition-all hover:scale-[1.02] active:scale-[0.98] animate-shimmer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
         >
           {isSimulating ? (
             <div className="flex items-center gap-3">

@@ -30,6 +30,7 @@ import { enqueueOfflineAction } from "@/lib/offline-support";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { toI128, calculateEstimatedShares } from "@/lib/soroban-i128";
 import { getTermTooltip } from "@/lib/defi-terms";
+import { useTransactionValidation } from "@/hooks/useTransactionValidation";
 import axios from "@/lib/api-client";
 
 interface DepositModalVault {
@@ -67,10 +68,22 @@ export const DepositModal: React.FC<DepositModalProps> = ({
   const [isSimulating, setIsSimulating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const {
+    isValid,
+    isOverBalance,
+    isInsufficientGas,
+    isLowGas,
+    errorMessage: validationError,
+    warningMessage: validationWarning,
+  } = useTransactionValidation({
+    amount,
+    availableBalance: vault?.walletBalance ?? "0",
+    assetSymbol: vault?.asset ?? "",
+    operation: "deposit",
+  });
+
   const numericAmount = parseFloat(amount) || 0;
   const walletBalanceNum = parseFloat(vault?.walletBalance ?? "0") || 0;
-  const isOverBalance = numericAmount > walletBalanceNum && numericAmount > 0;
-  const isValid = numericAmount > 0 && !isOverBalance;
 
   const i128Value = useMemo(() => toI128(numericAmount), [numericAmount]);
 
@@ -87,6 +100,11 @@ export const DepositModal: React.FC<DepositModalProps> = ({
 
     if (isOverBalance) {
       setError(`Amount exceeds wallet balance of ${vault.walletBalance} ${vault.asset}`);
+      return;
+    }
+
+    if (isInsufficientGas) {
+      setError("Insufficient XLM for network gas fees");
       return;
     }
 
@@ -273,7 +291,29 @@ export const DepositModal: React.FC<DepositModalProps> = ({
             </div>
           )}
 
-          {error && (
+          {validationError && (
+            <div className="animate-in slide-in-from-top-2 duration-300">
+              <Alert
+                variant="error"
+                title="Transaction Blocked"
+                description={validationError}
+                className="rounded-[2rem] border-2 border-red-500/20 bg-red-500/5 text-red-900 dark:text-red-400"
+              />
+            </div>
+          )}
+
+          {validationWarning && !validationError && (
+            <div className="animate-in slide-in-from-top-2 duration-300">
+              <Alert
+                variant="warning"
+                title="Gas Warning"
+                description={validationWarning}
+                className="rounded-[2rem] border-2 border-amber-500/20 bg-amber-500/5 text-amber-900 dark:text-amber-400"
+              />
+            </div>
+          )}
+
+          {error && !validationError && (
             <div className="animate-in slide-in-from-top-2 duration-300">
               <Alert
                 variant="error"
@@ -291,8 +331,9 @@ export const DepositModal: React.FC<DepositModalProps> = ({
           fullWidth
           size="lg"
           isLoading={isLoading || isSimulating}
+          isDisabled={!isValid || isLoading || isSimulating}
           onClick={handleDeposit}
-          className="rounded-[1.5rem] py-10 text-2xl font-black shadow-2xl shadow-harvest-green-500/40 transition-all hover:scale-[1.02] active:scale-[0.98] animate-shimmer"
+          className="rounded-[1.5rem] py-10 text-2xl font-black shadow-2xl shadow-harvest-green-500/40 transition-all hover:scale-[1.02] active:scale-[0.98] animate-shimmer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
         >
           {isSimulating ? (
             <div className="flex items-center gap-3">

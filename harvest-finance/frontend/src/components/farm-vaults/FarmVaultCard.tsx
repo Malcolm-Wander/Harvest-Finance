@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { Card, CardBody, Button, Badge, Stack, cn } from "@/components/ui";
+import { Card, CardBody, Button, Badge, Stack, cn, Alert } from "@/components/ui";
+import { useTransactionValidation } from "@/hooks/useTransactionValidation";
 import { 
   Calendar, 
   Sprout, 
@@ -12,7 +13,8 @@ import {
   ShieldCheck, 
   Activity, 
   Zap, 
-  ArrowUpRight 
+  ArrowUpRight,
+  AlertTriangle
 } from "lucide-react";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import axios from "@/lib/api-client";
@@ -35,10 +37,24 @@ export function FarmVaultCard({
   const [isDepositing, setIsDepositing] = useState(false);
   const [depositAmount, setDepositAmount] = useState("");
 
+  const {
+    isValid,
+    isOverBalance,
+    isInsufficientGas,
+    isLowGas,
+    errorMessage: validationError,
+    warningMessage: validationWarning,
+  } = useTransactionValidation({
+    amount: depositAmount,
+    availableBalance: vault?.walletBalance ?? vault?.balance ?? "0",
+    assetSymbol: vault?.asset ?? "",
+    operation: "deposit",
+  });
+
   const Icon = iconMap[vault.cropCycle?.icon] || Sprout;
 
   const handleDeposit = async () => {
-    if (!depositAmount || parseFloat(depositAmount) <= 0) return;
+    if (!isValid) return;
 
     setIsDepositing(true);
     try {
@@ -202,6 +218,30 @@ export function FarmVaultCard({
             </div>
           </Stack>
 
+          {/* Validation Alerts */}
+          {validationError && (
+            <div className="animate-in slide-in-from-top-2 duration-300">
+              <Alert
+                variant="error"
+                title="Transaction Blocked"
+                description={validationError}
+                className="rounded-2xl border-2 border-red-500/20 bg-red-500/5 text-red-900 dark:text-red-400"
+                icon={<AlertTriangle className="w-5 h-5" />}
+              />
+            </div>
+          )}
+
+          {validationWarning && !validationError && (
+            <div className="animate-in slide-in-from-top-2 duration-300">
+              <Alert
+                variant="warning"
+                title="Gas Warning"
+                description={validationWarning}
+                className="rounded-2xl border-2 border-amber-500/20 bg-amber-500/5 text-amber-900 dark:text-amber-400"
+              />
+            </div>
+          )}
+
           {/* Action Section */}
           <div className="flex items-center gap-4 pt-4">
             <div className="relative flex-1 group/input">
@@ -211,16 +251,27 @@ export function FarmVaultCard({
               <input
                 type="number"
                 placeholder="Amount"
-                className="w-full h-16 rounded-2xl border-2 border-gray-100 dark:border-gray-800 bg-white dark:bg-black/20 pl-12 pr-4 text-lg font-black text-gray-900 dark:text-white placeholder:text-gray-400 outline-none transition-all focus:border-harvest-green-500 focus:ring-[10px] focus:ring-harvest-green-500/5 shadow-inner"
+                className={cn(
+                  "w-full h-16 rounded-2xl border-2 bg-white dark:bg-black/20 pl-12 pr-4 text-lg font-black text-gray-900 dark:text-white placeholder:text-gray-400 outline-none transition-all focus:ring-[10px] focus:ring-harvest-green-500/5 shadow-inner",
+                  isOverBalance || isInsufficientGas
+                    ? "border-red-300 focus:border-red-400 focus:ring-red-500/5"
+                    : "border-gray-100 dark:border-gray-800 focus:border-harvest-green-500"
+                )}
                 value={depositAmount}
                 onChange={(e) => setDepositAmount(e.target.value)}
               />
+              {isOverBalance && (
+                <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                  <span className="text-xs font-black text-red-500">Insufficient</span>
+                </div>
+              )}
             </div>
             <Button
               variant="primary"
               size="lg"
-              className="h-16 rounded-2xl px-10 font-black shadow-2xl shadow-harvest-green-500/20 transition-all hover:scale-[1.05] active:scale-[0.95] animate-shimmer"
+              className="h-16 rounded-2xl px-10 font-black shadow-2xl shadow-harvest-green-500/20 transition-all hover:scale-[1.05] active:scale-[0.95] animate-shimmer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
               isLoading={isDepositing}
+              isDisabled={!isValid || isDepositing}
               onClick={handleDeposit}
             >
               <div className="flex items-center gap-2">

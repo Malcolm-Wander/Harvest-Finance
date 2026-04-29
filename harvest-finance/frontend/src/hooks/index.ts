@@ -6,3 +6,4 @@ export { useWeather } from './useWeather';
 export { useMilestones } from './useMilestones';
 export { useNotifications } from './useNotifications';
 export { useQueryHistory } from './useQueryHistory';
+export { useTransactionValidation } from './useTransactionValidation';
