@@ -9,12 +9,14 @@ import {
   ArrowRightLeft,
   Settings,
   Sprout,
+  Code2,
 } from "lucide-react";
 
 export const dashboardNavItems = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Portfolio", href: "/portfolio", icon: Wallet },
   { label: "Farm Vaults", href: "/dashboard/farm-vaults", icon: Sprout },
+  { label: "Soroban Signing", href: "/dashboard/soroban-signing", icon: Code2 },
   { label: "Transactions", href: "/transactions", icon: ArrowRightLeft },
   { label: "Settings", href: "/settings", icon: Settings },
 ];
@@ -49,7 +51,9 @@ export function Sidebar() {
             >
               <Icon
                 className={`w-5 h-5 ${
-                  isActive ? "text-harvest-green-600 dark:text-harvest-green-400" : "text-gray-400 dark:text-gray-500"
+                  isActive
+                    ? "text-harvest-green-600 dark:text-harvest-green-400"
+                    : "text-gray-400 dark:text-gray-500"
                 }`}
               />
               {item.label}
