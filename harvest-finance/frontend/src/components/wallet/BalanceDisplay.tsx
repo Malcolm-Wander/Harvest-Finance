@@ -2,8 +2,10 @@
 
 import React from 'react';
 import { useWalletStore, TokenBalance } from '@/store/wallet';
-import { Card, CardHeader, CardBody, Badge } from '@/components/ui';
+import { Card, CardHeader, CardBody, Badge, Tooltip } from '@/components/ui';
 import { useToastStore } from '@/store/useToastStore';
+import { Info } from 'lucide-react';
+import { getTermTooltip } from '@/lib/defi-terms';
 
 export function BalanceDisplay() {
   const { isConnected, balances, totalValueUsd, refreshBalances, isRefreshing } = useWalletStore();
@@ -32,7 +34,14 @@ export function BalanceDisplay() {
   return (
     <Card variant="default" padding="none">
       <CardHeader
-        title="Portfolio"
+        title={
+          <Tooltip content={getTermTooltip('trustlines')} position="bottom">
+            <span className="flex items-center gap-1 cursor-help">
+              Portfolio
+              <Info className="w-4 h-4 opacity-60" />
+            </span>
+          </Tooltip>
+        }
         subtitle="Your token balances"
         className="p-4 border-b border-gray-100"
         action={

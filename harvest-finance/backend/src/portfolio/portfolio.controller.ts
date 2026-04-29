@@ -26,7 +26,10 @@ import { PortfolioService } from './portfolio.service';
 
 @ApiTags('Portfolio')
 @ApiBearerAuth('JWT-auth')
-@Controller('api/v1/portfolio')
+@Controller({
+  path: 'portfolio',
+  version: '1',
+})
 @UseGuards(JwtAuthGuard)
 export class PortfolioController {
   constructor(private readonly portfolioService: PortfolioService) {}

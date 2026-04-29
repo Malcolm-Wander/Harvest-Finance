@@ -21,7 +21,10 @@ import {
 } from '@nestjs/swagger';
 
 @ApiTags('Export')
-@Controller('api/v1/export')
+@Controller({
+  path: 'export',
+  version: '1',
+})
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class ExportController {

@@ -8,6 +8,7 @@ import { calculateDepositReward } from './utils/reward-calculator';
 import { UserRewardsResponseDto, VaultRewardSummaryDto, ClaimRewardsResponseDto } from './dto/reward-response.dto';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '../database/entities/notification.entity';
+import { VaultGateway } from '../realtime/vault.gateway';
 
 @Injectable()
 export class RewardsService {
@@ -16,6 +17,7 @@ export class RewardsService {
     @InjectRepository(Vault) private vaultRepo: Repository<Vault>,
     @InjectRepository(Reward) private rewardRepo: Repository<Reward>,
     private notificationsService: NotificationsService,
+    private vaultGateway: VaultGateway,
   ) {}
 
   async getUserRewards(userId: string): Promise<UserRewardsResponseDto> {
@@ -61,12 +63,20 @@ export class RewardsService {
     const rewardsData = await this.getUserRewards(userId);
 
     let claimedAmount: number;
+    let vaultName = 'All Vaults';
+    let asset = '';
+
     if (vaultId) {
       const vaultSummary = rewardsData.byVault.find((v) => v.vaultId === vaultId);
       if (!vaultSummary) {
         throw new NotFoundException('No rewards found for the specified vault');
       }
       claimedAmount = vaultSummary.totalReward;
+      vaultName = vaultSummary.vaultName;
+
+      // Fetch vault for asset info
+      const vault = await this.vaultRepo.findOne({ where: { id: vaultId } });
+      asset = vault?.type || '';
     } else {
       claimedAmount = rewardsData.totalReward;
     }
@@ -87,8 +97,17 @@ export class RewardsService {
     await this.notificationsService.create({
       userId,
       title: 'Rewards Claimed',
-      message: `You have successfully claimed ${claimedAmount.toFixed(8)} in rewards from ${vaultId ? 'vault ' + vaultId : 'all vaults'}.`,
+      message: `You have successfully claimed ${claimedAmount.toFixed(8)} in rewards from ${vaultId ? 'vault ' + vaultName : 'all vaults'}.`,
       type: NotificationType.REWARD,
+    });
+
+    // Emit real-time event
+    this.vaultGateway.emitHarvest({
+      vaultId: vaultId ?? 'all',
+      vaultName,
+      asset,
+      amount: claimedAmount,
+      userId,
     });
 
     return {

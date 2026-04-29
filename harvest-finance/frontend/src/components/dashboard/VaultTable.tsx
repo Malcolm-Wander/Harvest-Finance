@@ -12,6 +12,7 @@ import {
   Button,
   Inline,
   StrategyBadge,
+  Tooltip,
 } from '@/components/ui';
 import { 
   ArrowUpDown, 
@@ -20,7 +21,8 @@ import {
   Coins, 
   Zap, 
   Leaf, 
-  Shield 
+  Shield,
+  Info,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Vault } from '@/types/vault';
@@ -32,6 +34,7 @@ import {
   formatPercentage, 
   getRiskVariant 
 } from '@/lib/vault-utils';
+import { getTermTooltip } from '@/lib/defi-terms';
 
 interface VaultTableProps {
   vaults: Vault[];
@@ -102,7 +105,12 @@ export const VaultTable: React.FC<VaultTableProps> = ({
               onClick={() => handleSort('apy')}
             >
               <Inline gap="none" align="center">
-                <span>{t('dashboard.apy')}</span>
+                <Tooltip content={getTermTooltip('apy')} position="bottom">
+                  <span className="flex items-center gap-1 cursor-help">
+                    <span>{t('dashboard.apy')}</span>
+                    <Info className="w-3 h-3 opacity-60" />
+                  </span>
+                </Tooltip>
                 {renderSortIcon('apy')}
               </Inline>
             </TableHead>
@@ -111,7 +119,12 @@ export const VaultTable: React.FC<VaultTableProps> = ({
               onClick={() => handleSort('tvl')}
             >
               <Inline gap="none" align="center">
-                <span>{t('dashboard.tvl')}</span>
+                <Tooltip content={getTermTooltip('tvl')} position="bottom">
+                  <span className="flex items-center gap-1 cursor-help">
+                    <span>{t('dashboard.tvl')}</span>
+                    <Info className="w-3 h-3 opacity-60" />
+                  </span>
+                </Tooltip>
                 {renderSortIcon('tvl')}
               </Inline>
             </TableHead>
@@ -120,11 +133,23 @@ export const VaultTable: React.FC<VaultTableProps> = ({
               onClick={() => handleSort('riskLevel')}
             >
               <Inline gap="none" align="center">
-                <span>{t('dashboard.risk_level')}</span>
+                <Tooltip content={getTermTooltip('risk_level')} position="bottom">
+                  <span className="flex items-center gap-1 cursor-help">
+                    <span>{t('dashboard.risk_level')}</span>
+                    <Info className="w-3 h-3 opacity-60" />
+                  </span>
+                </Tooltip>
                 {renderSortIcon('riskLevel')}
               </Inline>
             </TableHead>
-            <TableHead>{t('dashboard.strategy')}</TableHead>
+            <TableHead>
+              <Tooltip content={getTermTooltip('strategy')} position="bottom">
+                <span className="flex items-center gap-1 cursor-help">
+                  <span>{t('dashboard.strategy')}</span>
+                  <Info className="w-3 h-3 opacity-60" />
+                </span>
+              </Tooltip>
+            </TableHead>
             <TableHead className="text-right">{t('dashboard.actions')}</TableHead>
           </TableRow>
         </TableHeader>

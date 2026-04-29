@@ -13,10 +13,12 @@ import {
   Badge,
   Card,
   CardBody,
+  Tooltip,
   cn
 } from '@/components/ui';
-import { Sprout, Wheat, Coffee, Leaf, ChevronRight, Check } from 'lucide-react';
+import { Sprout, Wheat, Coffee, Leaf, ChevronRight, Check, Info } from 'lucide-react';
 import { useAuthStore } from '@/lib/stores/auth-store';
+import { getTermTooltip } from '@/lib/defi-terms';
 import axios from '@/lib/api-client';
 
 const iconMap: Record<string, any> = {
@@ -156,6 +158,12 @@ export function CreateVaultModal({ isOpen, onClose, onSuccess }: { isOpen: boole
                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-harvest-green-100 dark:bg-[rgba(74,222,128,0.15)] text-harvest-green-800 dark:text-harvest-green-300">
                       +{cycle.yieldRate}% APY
                     </span>
+                    <Tooltip content={getTermTooltip('slippage')} position="top">
+                      <span className="text-[10px] font-medium text-gray-400 dark:text-gray-500 cursor-help flex items-center gap-0.5">
+                        Slippage
+                        <Info className="w-2.5 h-2.5 opacity-60" />
+                      </span>
+                    </Tooltip>
                     <span className="text-[10px] font-medium text-gray-400 dark:text-gray-500">{cycle.durationDays} Days</span>
                   </div>
                 </div>
@@ -170,7 +178,12 @@ export function CreateVaultModal({ isOpen, onClose, onSuccess }: { isOpen: boole
               </div>
               <div>
                 <h4 className="font-bold text-harvest-green-900 dark:text-harvest-green-100">{selectedCycle?.name}</h4>
-                <p className="text-harvest-green-700 dark:text-harvest-green-400 text-xs">Expected Yield: +{selectedCycle?.yieldRate}%</p>
+                <Tooltip content={getTermTooltip('yield')} position="top">
+                  <p className="text-harvest-green-700 dark:text-harvest-green-400 text-xs flex items-center gap-1 cursor-help">
+                    Expected Yield: +{selectedCycle?.yieldRate}%
+                    <Info className="w-3 h-3 opacity-60" />
+                  </p>
+                </Tooltip>
               </div>
             </div>
 

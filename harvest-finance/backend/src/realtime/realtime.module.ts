@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { JwtModule } from '@nestjs/jwt';
 import { RealtimeGateway } from './realtime.gateway';
 import { RealtimeService } from './realtime.service';
 import { RealtimeController } from './realtime.controller';
@@ -15,6 +17,15 @@ import { Reward } from '../database/entities/reward.entity';
 @Module({
   imports: [
     ScheduleModule.forRoot(),
+    ConfigModule,
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET') || 'super_secret_jwt_key',
+        signOptions: { expiresIn: '1h' },
+      }),
+      inject: [ConfigService],
+    }),
     TypeOrmModule.forFeature([User, Deposit, Withdrawal, Vault, FarmVault, Reward]),
   ],
   controllers: [RealtimeController],

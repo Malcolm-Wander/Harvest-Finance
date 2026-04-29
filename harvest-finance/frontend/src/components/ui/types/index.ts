@@ -59,7 +59,7 @@ export interface CardProps extends BaseProps, HTMLAttributes<HTMLDivElement> {
 }
 
 export interface CardHeaderProps extends BaseProps, HTMLAttributes<HTMLDivElement> {
-  title?: string;
+  title?: ReactNode;
   subtitle?: string;
   action?: ReactNode;
 }

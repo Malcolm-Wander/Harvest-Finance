@@ -73,6 +73,12 @@ export class VaultsService {
       throw new BadRequestException('Deposit amount must be greater than 0');
     }
 
+    // Check for unreasonably large amounts that could cause overflow
+    const MAX_SAFE_DEPOSIT = 1e30; // Very large but safe number
+    if (amount > MAX_SAFE_DEPOSIT) {
+      throw new BadRequestException('Deposit amount exceeds maximum allowed value');
+    }
+
     const vault = await this.getVaultById(vaultId);
 
     if (vault.status !== VaultStatus.ACTIVE) {
@@ -138,6 +144,7 @@ export class VaultsService {
     this.vaultGateway.emitDeposit({
       vaultId,
       vaultName: vault.vaultName,
+      asset: vault.type,
       amount,
       userId,
       newBalance: result.vault ? Number(result.vault.totalDeposits) : 0,
@@ -215,6 +222,19 @@ export class VaultsService {
     return vaults.map((vault) => this.mapVaultToResponse(vault));
   }
 
+  async getVaultsMetadata(): Promise<any[]> {
+    const vaults = await this.vaultRepository.find({
+      select: ['vaultName', 'symbol', 'assetPair'],
+      where: { isPublic: true },
+    });
+
+    return vaults.map((v) => ({
+      name: v.vaultName,
+      symbol: v.symbol,
+      assetPair: v.assetPair,
+    }));
+  }
+
   mapVaultToResponse(vault: Vault): VaultResponseDto {
     return {
       id: vault.id,
@@ -223,6 +243,8 @@ export class VaultsService {
       status: vault.status,
       vaultName: vault.vaultName,
       description: vault.description,
+      symbol: vault.symbol,
+      assetPair: vault.assetPair,
       totalDeposits: Number(vault.totalDeposits),
       maxCapacity: Number(vault.maxCapacity),
       availableCapacity: vault.availableCapacity,
@@ -302,6 +324,7 @@ export class VaultsService {
     this.vaultGateway.emitWithdrawal({
       vaultId,
       vaultName: vault.vaultName,
+      asset: vault.type,
       amount,
       userId,
       newBalance: result.vault ? Number(result.vault.totalDeposits) : 0,
@@ -324,5 +347,45 @@ export class VaultsService {
       createdAt: deposit.createdAt,
       confirmedAt: deposit.confirmedAt,
     };
+  }
+
+  async getApyHistory(vaultId?: string, timeRange: string = '30d'): Promise<any[]> {
+    // Calculate date range
+    const now = new Date();
+    let daysBack = 30;
+
+    switch (timeRange) {
+      case '7d':
+        daysBack = 7;
+        break;
+      case '90d':
+        daysBack = 90;
+        break;
+      case 'all':
+        daysBack = 365; // Approximate 1 year
+        break;
+      default:
+        daysBack = 30;
+    }
+
+    const startDate = new Date(now.getTime() - daysBack * 24 * 60 * 60 * 1000);
+
+    // For now, generate mock APY data
+    // In production, this would come from yield analytics data stored in database
+    const dataPoints = [];
+    for (let i = 0; i < daysBack; i++) {
+      const date = new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000);
+      // Generate somewhat realistic APY data with some variation
+      const baseApy = 8 + Math.sin(i / 10) * 2 + Math.random() * 1;
+      const apy = Math.max(0, Math.min(15, baseApy));
+
+      dataPoints.push({
+        date: date.toISOString().split('T')[0],
+        apy: Math.round(apy * 100) / 100,
+        vaultId: vaultId || 'all',
+      });
+    }
+
+    return dataPoints;
   }
 }

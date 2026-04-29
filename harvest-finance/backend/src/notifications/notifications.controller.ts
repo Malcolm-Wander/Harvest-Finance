@@ -24,7 +24,10 @@ import { NotificationResponseDto } from './dto/notification-response.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @ApiTags('Notifications')
-@Controller('api/v1/notifications')
+@Controller({
+  path: 'notifications',
+  version: '1',
+})
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class NotificationsController {

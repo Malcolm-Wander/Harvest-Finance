@@ -31,7 +31,10 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../database/entities/user.entity';
 
 @ApiTags('Admin')
-@Controller('api/v1/admin')
+@Controller({
+  path: 'admin',
+  version: '1',
+})
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.ADMIN)
 @ApiBearerAuth()

@@ -7,12 +7,14 @@ import { RewardsController } from './rewards.controller';
 import { RewardsService } from './rewards.service';
 import { AuthModule } from '../auth/auth.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { RealtimeModule } from '../realtime/realtime.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Deposit, Vault, Reward]),
     AuthModule,
     NotificationsModule,
+    RealtimeModule,
   ],
   controllers: [RewardsController],
   providers: [RewardsService],

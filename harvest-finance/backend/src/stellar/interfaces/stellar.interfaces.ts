@@ -67,6 +67,21 @@ export interface OperationRecord {
     asset?: string;
 }
 
+export interface DecodedOperation {
+    type: string;
+    details: Record<string, any>;
+}
+
+export interface DecodedTransaction {
+    hash: string;
+    ledger: number;
+    createdAt: string;
+    sourceAccount: string;
+    successful: boolean;
+    memo: string | null;
+    operations: DecodedOperation[];
+}
+
 export interface MultiSigSetupParams {
     primaryPublicKey: string;
     cosignerPublicKeys: string[];
@@ -79,6 +94,16 @@ export interface FeeEstimate {
     estimatedTotalFee: string;
     feePerOperation: string;
     currentNetworkFee: number;
+    cheapFeeSuggestion: {
+        stroops: number;
+        xlm: string;
+        percentile: number;
+    };
+    fastFeeSuggestion: {
+        stroops: number;
+        xlm: string;
+        percentile: number;
+    };
 }
 
 export interface AccountInfo {

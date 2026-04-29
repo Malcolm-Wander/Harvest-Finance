@@ -1,6 +1,8 @@
-import { Injectable, Logger, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, InternalServerErrorException, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { SecretsService } from '../../common/secrets/secrets.service';
 import * as StellarSdk from 'stellar-sdk';
+import { CustomLoggerService } from '../../logger/custom-logger.service';
 import {
     EscrowCreateParams,
     EscrowResult,
@@ -16,14 +18,17 @@ import {
 } from '../interfaces/stellar.interfaces';
 
 @Injectable()
-export class StellarService {
+export class StellarService implements OnModuleInit {
     private readonly logger = new Logger(StellarService.name);
     private readonly server: StellarSdk.Horizon.Server;
     private readonly networkPassphrase: string;
     private readonly platformPublicKey: string;
-    private readonly platformSecretKey: string;
+    private platformSecretKey: string;
 
-    constructor(private readonly configService: ConfigService) {
+    constructor(
+        private readonly configService: ConfigService,
+        private readonly secretsService: SecretsService,
+    ) {
         const network = this.configService.get<string>('STELLAR_NETWORK', 'testnet');
 
         if (network === 'mainnet') {
@@ -37,7 +42,15 @@ export class StellarService {
         }
 
         this.platformPublicKey = this.configService.getOrThrow<string>('STELLAR_PLATFORM_PUBLIC_KEY');
-        this.platformSecretKey = this.configService.getOrThrow<string>('STELLAR_PLATFORM_SECRET_KEY');
+    }
+
+    async onModuleInit() {
+        const secret = await this.secretsService.getSecret('STELLAR_PLATFORM_SECRET_KEY');
+        if (!secret) {
+            this.logger.error('Failed to load STELLAR_PLATFORM_SECRET_KEY from secrets provider');
+            throw new InternalServerErrorException('Platform secret key configuration missing');
+        }
+        this.platformSecretKey = secret;
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
@@ -118,8 +131,6 @@ export class StellarService {
             let cursor: string | undefined;
             const pageSize = Math.min(200, Math.max(safeLimit, remainingToSkip > 0 ? 200 : safeLimit));
 
-            // Horizon is cursor-paginated; to honour skip we fast-forward through
-            // prior pages using the largest permitted page size.
             while (remainingToSkip >= pageSize) {
                 const call = this.server
                     .transactions()
@@ -145,7 +156,6 @@ export class StellarService {
                 remainingToSkip -= page.records.length;
 
                 if (page.records.length < pageSize) {
-                    // Reached the end before finishing the skip.
                     return {
                         total: null,
                         skip: safeSkip,
@@ -158,7 +168,6 @@ export class StellarService {
                 }
             }
 
-            // Consume the remaining skip within the next page, then take the requested slice.
             const finalPageSize = Math.min(200, remainingToSkip + safeLimit);
             const finalCall = this.server
                 .transactions()
@@ -198,6 +207,70 @@ export class StellarService {
         } catch (err) {
             this.handleStellarError(err, `getAccountTransactions(${publicKey})`);
         }
+    }
+
+    /**
+     * Decodes XDR for all transactions in a history slice to provide
+     * human-readable operation details.
+     */
+    async getDecodedAccountTransactions(
+        publicKey: string,
+        skip = 0,
+        limit = 20,
+        order: 'asc' | 'desc' = 'desc',
+    ): Promise<{
+        skip: number;
+        limit: number;
+        order: 'asc' | 'desc';
+        records: any[];
+    }> {
+        const history = await this.getAccountTransactions(publicKey, skip, limit, order);
+        
+        const decodedRecords = await Promise.all(history.records.map(async (txMeta: any) => {
+            try {
+                const fullTx = await this.server.transactions().transaction(txMeta.hash).call();
+                const envelope = StellarSdk.TransactionBuilder.fromXDR(fullTx.envelope_xdr, this.networkPassphrase);
+                
+                const operations = envelope instanceof StellarSdk.FeeBumpTransaction 
+                    ? envelope.innerTransaction.operations 
+                    : envelope.operations;
+
+                return {
+                    ...txMeta,
+                    operations: operations.map(op => ({
+                        type: op.type,
+                        details: this.sanitizeOperationDetails(op),
+                    })),
+                };
+            } catch (err) {
+                this.logger.warn(`Failed to decode XDR for tx ${txMeta.hash}: ${err.message}`);
+                return { ...txMeta, operations: [] };
+            }
+        }));
+
+        return {
+            skip: history.skip,
+            limit: history.limit,
+            order: history.order,
+            records: decodedRecords,
+        };
+    }
+
+    private sanitizeOperationDetails(op: any): Record<string, any> {
+        const details: Record<string, any> = { ...op };
+        delete details.type; // already in the outer object
+        
+        // Convert buffers/bigints to strings for JSON safety
+        for (const key in details) {
+            if (details[key] instanceof Buffer) {
+                details[key] = details[key].toString('hex');
+            } else if (typeof details[key] === 'bigint') {
+                details[key] = details[key].toString();
+            } else if (details[key] instanceof StellarSdk.Asset) {
+                details[key] = details[key].toString();
+            }
+        }
+        return details;
     }
 
     async verifyConnection(): Promise<boolean> {
@@ -264,7 +337,7 @@ export class StellarService {
         }
 
         try {
-            const response = await this.server.submitTransaction(transaction);
+            const response = await this.submitWithRetry(transaction, 'releaseUpfrontPayment');
             this.logger.log(`Upfront payment released | txHash=${response.hash}`);
             return {
                 transactionHash: response.hash,
@@ -355,7 +428,7 @@ export class StellarService {
         }
 
         try {
-        const response = await this.server.submitTransaction(transaction);
+        const response = await this.submitWithRetry(transaction, 'createEscrow');
         const balanceId = this.extractBalanceId(response);
 
         this.logger.log(`Escrow created | balanceId=${balanceId} txHash=${response.hash}`);
@@ -424,7 +497,7 @@ export class StellarService {
         }
 
         try {
-        const response = await this.server.submitTransaction(transaction);
+        const response = await this.submitWithRetry(transaction, 'releasePayment');
         this.logger.log(`Payment released | txHash=${response.hash}`);
 
         return {
@@ -487,7 +560,7 @@ export class StellarService {
         }
 
         try {
-        const response = await this.server.submitTransaction(transaction);
+        const response = await this.submitWithRetry(transaction, 'refund');
         this.logger.log(`Refund processed | txHash=${response.hash}`);
 
         return {
@@ -553,7 +626,7 @@ export class StellarService {
         transaction.sign(sourceKeypair);
 
         try {
-        const response = await this.server.submitTransaction(transaction);
+        const response = await this.submitWithRetry(transaction, 'setupMultiSig');
         this.logger.log(`Multisig configured | txHash=${response.hash}`);
 
         return {
@@ -588,9 +661,9 @@ export class StellarService {
         return {
             transactionHash,
             status: tx.successful ? 'success' : 'failed',
-            ledger: Number(tx.ledger),
-            createdAt: new Date(tx.created_at),
-            fee: this.stroopsToXlm(String(tx.fee_charged)),
+            ledger: tx.ledger_attr ? Number(tx.ledger_attr) : (typeof tx.ledger === 'number' || typeof tx.ledger === 'string' ? Number(tx.ledger) : 0),
+            createdAt: tx.created_at ? new Date(tx.created_at) : new Date(),
+            fee: this.stroopsToXlm(tx.fee_charged ? String(tx.fee_charged) : '0'),
             operations,
         };
         } catch (err) {
@@ -638,25 +711,50 @@ export class StellarService {
     // ─────────────────────────────────────────────────────────────────────────────
 
     async estimateFee(operationCount = 1): Promise<FeeEstimate> {
+        const safeOperationCount = Math.max(1, operationCount);
         try {
-        const feeStats = await this.server.feeStats();
-        const baseFeeStroops = parseInt(feeStats.fee_charged.mode, 10);
-        const totalStroops = baseFeeStroops * operationCount;
+            const feeStats = await this.server.feeStats();
+            const chargedStats = feeStats.fee_charged as any;
+            const baseFeeStroops = parseInt(chargedStats.mode, 10);
+            const totalStroops = baseFeeStroops * safeOperationCount;
 
-        return {
-            baseFee: this.stroopsToXlm(baseFeeStroops),
-            estimatedTotalFee: this.stroopsToXlm(totalStroops),
-            feePerOperation: this.stroopsToXlm(baseFeeStroops),
-            currentNetworkFee: baseFeeStroops,
-        };
+            const cheapStroops = parseInt(chargedStats.p20, 10);
+            const fastStroops = parseInt(chargedStats.p90, 10);
+
+            return {
+                baseFee: this.stroopsToXlm(baseFeeStroops),
+                estimatedTotalFee: this.stroopsToXlm(totalStroops),
+                feePerOperation: this.stroopsToXlm(baseFeeStroops),
+                currentNetworkFee: baseFeeStroops,
+                cheapFeeSuggestion: {
+                    stroops: cheapStroops,
+                    xlm: this.stroopsToXlm(cheapStroops),
+                    percentile: 20,
+                },
+                fastFeeSuggestion: {
+                    stroops: fastStroops,
+                    xlm: this.stroopsToXlm(fastStroops),
+                    percentile: 90,
+                },
+            };
         } catch (err) {
-        this.logger.warn('Could not fetch fee stats, using default 100 stroops');
-        return {
-            baseFee: this.stroopsToXlm(100),
-            estimatedTotalFee: this.stroopsToXlm(100 * operationCount),
-            feePerOperation: this.stroopsToXlm(100),
-            currentNetworkFee: 100,
-        };
+            this.logger.warn('Could not fetch fee stats, using default 100 stroops');
+            return {
+                baseFee: this.stroopsToXlm(100),
+                estimatedTotalFee: this.stroopsToXlm(100 * safeOperationCount),
+                feePerOperation: this.stroopsToXlm(100),
+                currentNetworkFee: 100,
+                cheapFeeSuggestion: {
+                    stroops: 100,
+                    xlm: this.stroopsToXlm(100),
+                    percentile: 20,
+                },
+                fastFeeSuggestion: {
+                    stroops: 250,
+                    xlm: this.stroopsToXlm(250),
+                    percentile: 90,
+                },
+            };
         }
     }
 
@@ -726,7 +824,7 @@ export class StellarService {
         feeBumpTx.sign(feeSourceKeypair);
 
         try {
-            const response = await this.server.submitTransaction(feeBumpTx);
+            const response = await this.submitWithRetry(feeBumpTx, 'submitWithFeeBump');
             this.logger.log(`Fee-bump transaction submitted | outerHash=${response.hash} innerHash=${innerTx.hash().toString('hex')}`);
 
             return {
@@ -808,21 +906,52 @@ export class StellarService {
 
 
     private handleStellarError(err: any, context: string): never {
+        const status = err?.response?.status;
+
         if (err?.response?.data?.extras?.result_codes) {
-        const codes = err.response.data.extras.result_codes;
-        this.logger.error(`Stellar error in ${context}`, JSON.stringify(codes));
-        throw new BadRequestException(`Stellar transaction failed: ${JSON.stringify(codes)}`);
+            const resultCodes = err.response.data.extras.result_codes;
+            this.structuredLogger?.errorEvent(
+                'stellar_tx_failed',
+                {
+                    context,
+                    status,
+                    resultCodes,
+                    message: err?.message ?? 'unknown',
+                },
+                StellarService.name,
+            );
+            this.logger.error(
+                `Stellar error in ${context}`,
+                JSON.stringify(resultCodes),
+            );
+            throw new BadRequestException(
+                `Stellar transaction failed: ${JSON.stringify(resultCodes)}`,
+            );
         }
 
-        if (err?.response?.status === 404) {
-        throw new BadRequestException(`Stellar resource not found (context: ${context})`);
+        if (status === 404) {
+            throw new BadRequestException(
+                `Stellar resource not found (context: ${context})`,
+            );
         }
 
         if (err instanceof BadRequestException) {
-        throw err;
+            throw err;
         }
 
+        this.structuredLogger?.errorEvent(
+            'stellar_tx_failed',
+            {
+                context,
+                status,
+                message: err?.message ?? 'unknown',
+                kind: 'unexpected',
+            },
+            StellarService.name,
+        );
         this.logger.error(`Unexpected Stellar error in ${context}`, err);
-        throw new InternalServerErrorException(`Stellar network error in ${context}: ${err?.message ?? 'unknown'}`);
+        throw new InternalServerErrorException(
+            `Stellar network error in ${context}: ${err?.message ?? 'unknown'}`,
+        );
     }
 }

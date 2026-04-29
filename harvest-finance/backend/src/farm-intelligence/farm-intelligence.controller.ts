@@ -7,7 +7,10 @@ import { HistoricalAnalyticsService } from './services/historical-analytics.serv
 import { WeatherService } from './services/weather.service';
 import { CropAdvisoryService } from './services/crop-advisory.service';
 
-@Controller('api/v1/farm-intelligence')
+@Controller({
+  path: 'farm-intelligence',
+  version: '1',
+})
 export class FarmIntelligenceController {
   constructor(
     private readonly projectionService: SavingsProjectionService,

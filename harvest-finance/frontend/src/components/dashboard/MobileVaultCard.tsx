@@ -10,7 +10,9 @@ import {
   MoreHorizontal,
   ChevronRight
 } from 'lucide-react';
-import { Badge, Card, CardBody } from '@/components/ui';
+import { Badge, Card, CardBody, Tooltip } from '@/components/ui';
+import { Info } from 'lucide-react';
+import { getTermTooltip } from '@/lib/defi-terms';
 
 interface MobileVaultCardProps {
   id: string;
@@ -97,8 +99,15 @@ export function MobileVaultCard({
             <p className="text-xl font-bold text-gray-900">{balance}</p>
           </div>
           <div className="text-right">
-            <p className="text-xs text-gray-500 mb-1">APY</p>
-            <p className="text-lg font-semibold text-harvest-green-600">{apy}</p>
+            <Tooltip content={getTermTooltip('apy')} position="top">
+              <div className="cursor-help">
+                <p className="text-xs text-gray-500 mb-1 flex items-center justify-end gap-1">
+                  APY
+                  <Info className="w-3 h-3 opacity-60" />
+                </p>
+                <p className="text-lg font-semibold text-harvest-green-600">{apy}</p>
+              </div>
+            </Tooltip>
           </div>
         </div>
 

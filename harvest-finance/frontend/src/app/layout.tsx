@@ -4,6 +4,7 @@ import "./globals.css";
 import { I18nInitializer } from "@/components/layout/I18nInitializer";
 import { MilestoneToastContainer } from "@/components/dashboard/MilestoneToast";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
+import QueryProvider from "@/components/providers/QueryProvider";
 import { ServiceWorkerRegistration } from "@/components/layout/ServiceWorkerRegistration";
 import { ConnectionStatus } from "@/components/layout/ConnectionStatus";
 
@@ -64,13 +65,15 @@ export default function RootLayout({
       >
         <I18nInitializer />
         <ThemeProvider>
-          <ServiceWorkerRegistration />
-          <a href="#main-content" className="skip-link">
-            Skip to main content
-          </a>
-          {children}
-          <MilestoneToastContainer />
-          <ConnectionStatus />
+          <QueryProvider>
+            <ServiceWorkerRegistration />
+            <a href="#main-content" className="skip-link">
+              Skip to main content
+            </a>
+            {children}
+            <MilestoneToastContainer />
+            <ConnectionStatus />
+          </QueryProvider>
         </ThemeProvider>
       </body>
     </html>

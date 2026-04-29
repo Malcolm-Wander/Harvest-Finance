@@ -22,7 +22,10 @@ import { SorobanIndexerService } from './soroban-indexer.service';
 
 @ApiTags('Soroban Events')
 @ApiBearerAuth('JWT-auth')
-@Controller('api/v1/soroban/events')
+@Controller({
+  path: 'soroban/events',
+  version: '1',
+})
 @UseGuards(JwtAuthGuard)
 export class SorobanController {
   constructor(private readonly indexer: SorobanIndexerService) {}
